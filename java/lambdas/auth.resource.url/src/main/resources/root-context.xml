@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:cache="http://www.springframework.org/schema/cache"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+       http://www.springframework.org/schema/beans/spring-beans.xsd
+       http://www.springframework.org/schema/context
+       http://www.springframework.org/schema/context/spring-context.xsd http://www.springframework.org/schema/cache http://www.springframework.org/schema/cache/spring-cache.xsd">
+
+    <context:property-placeholder location="classpath:config.properties"/>
+
+    <context:annotation-config/>
+
+    <import resource="mysql.remote.query.xml"/>
+    <import resource="awsS3Download.xml"/>
+
+    <bean id="contentToDynamoResource" class="ResourceContentToDynamoResource"/>
+
+    <bean class="org.pubanatomy.resAuthUrl.LabyrinthCdnConfig">
+        <property name="thumbnailContext" value="${labyrinthThumbnailContext}"/>
+        <property name="posterFrameContext" value="${labyrinthPosterFrameContext}"/>
+        <property name="flashContext" value="${labyrinthFlashContext}"/>
+        <property name="imageContext" value="${labyrinthImageContext}"/>
+        <property name="videoContext" value="${labyrinthVideoContext}"/>
+        <property name="envDirectory" value="${labyrinthEnvDirectory}"/>
+        <property name="rtmpURL" value="${labyrinthRtmpURL}"/>
+        <property name="cdnHttpUrl" value="${labyrinthCdnHttpUrl}"/>
+        <property name="baseDirectory" value="${labyrinthBaseDirectory}"/>
+        <property name="flashApplicationName" value="${labyrinthFlashApplicationName}"/>
+        <property name="securePath" value="${labyrinthSecurePath}"/>
+        <property name="unsecurePath" value="${labyrinthUnsecurePath}"/>
+        <property name="multibitratePath" value="${labyrinthMultibitratePath}"/>
+        <property name="secret" value="${labyrinthSecret}"/>
+        <property name="cdnRequestTTL" value="${labyrinthCdnRequestTTL}"/>
+    </bean>
+    <bean id="awsCredentials" class="com.amazonaws.auth.DefaultAWSCredentialsProviderChain"/>
+    <bean id="s3Client" class="com.amazonaws.services.s3.AmazonS3Client">
+        <constructor-arg ref="awsCredentials"/>
+        <constructor-arg>
+            <bean class="com.amazonaws.ClientConfiguration">
+                <property name="signerOverride" value="S3SignerType"/>
+            </bean>
+        </constructor-arg>
+    </bean>
+    <bean id="dynamoDBClient" class="com.amazonaws.services.dynamodbv2.AmazonDynamoDBClient"/>
+
+
+    <bean class="org.pubanatomy.resAuthUrl.CachingCalls"/>
+
+    <bean class="com.flashflexpro.graniteamf.SimpleGraniteConfig">
+        <constructor-arg>
+            <bean class="org.granite.messaging.amf.io.RegexAMF3DeserializerSecurizer">
+                <property name="param" value="#{'(^com\.customshow\..+|^com\.flashflexpro\..+)'}"/>
+            </bean>
+        </constructor-arg>
+    </bean>
+
+    <cache:annotation-driven/>
+
+    <bean id="cacheManager" class="org.springframework.cache.ehcache.EhCacheCacheManager">
+        <property name="cacheManager">
+            <bean class="org.springframework.cache.ehcache.EhCacheManagerFactoryBean">
+                <property name="configLocation" value="classpath:/auth.resource.url.xml"/>
+                <property name="shared" value="true"/>
+            </bean>
+        </property>
+    </bean>
+
+</beans>

@@ -1,0 +1,26 @@
+dependencies{
+
+    //    compile 'com.customshow:java.sif.utils:0.0.4'
+    compile project( ':java_modules:java.awsS3Upload' )
+    compile project( ':java_modules:java.awsS3Download' )
+    compile project( ':java_modules:java.videotranscoding' )
+    compile project( ':java_modules:java.query.mysql' )
+    compile project( ':java_modules:java.query.mysql.rpc' )
+
+    compile "org.springframework.integration:spring-integration-file:$springIntegrationVersion"
+
+}
+
+
+/*
+
+
+task integretionTest{
+doLast{}
+}
+
+def consoleAirTst = project( ':flash/airs:cloud.console.air:test' ).tasks.test
+
+consoleAirTst.dependsOn cargoRedeployRemote
+
+integretionTest.dependsOn consoleAirTst*/

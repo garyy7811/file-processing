@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:int="http://www.springframework.org/schema/integration"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+       http://www.springframework.org/schema/beans/spring-beans.xsd
+       http://www.springframework.org/schema/context
+       http://www.springframework.org/schema/context/spring-context.xsd
+       http://www.springframework.org/schema/integration
+       http://www.springframework.org/schema/integration/spring-integration.xsd">
+
+    <context:property-placeholder location="test-config.properties"/>
+
+    <context:annotation-config/>
+
+    <!--<import resource="awsS3UploadFromClient.xml"/>-->
+    <import resource="classpath:transcoding.xml"/>
+    <import resource="classpath:config.per.client.service.xml"/>
+    <import resource="classpath:login.verify.xml"/>
+
+
+    <bean class="com.amazonaws.services.dynamodbv2.AmazonDynamoDBClient">
+        <constructor-arg>
+            <bean class="com.amazonaws.auth.AWSStaticCredentialsProvider">
+                <constructor-arg>
+                    <bean class="com.amazonaws.auth.BasicAWSCredentials">
+                        <constructor-arg value="${build_aws_access_key_id}"/>
+                        <constructor-arg value="${build_aws_secret_access_key}"/>
+                    </bean>
+                </constructor-arg>
+            </bean>
+        </constructor-arg>
+        <property name="endpoint" value="${uniTestAwsDynamoDbEndpoint}"/>
+    </bean>
+
+    <bean class="org.pubanatomy.test.TestMockS3"/>
+
+    <bean class="org.eclipse.jetty.server.Server">
+        <constructor-arg value="${jettyServerPort}"/>
+    </bean>
+
+    <bean class="org.pubanatomy.videotranscoding.OnTranscodeStatusChanged" id="mediaStatusChangedHandler">
+        <constructor-arg value="${resourceStatusQueueUrl}"/>
+        <constructor-arg value="${awsS3DownloadBucket}"/>
+    </bean>
+
+    <bean class="org.pubanatomy.awsS3Download.AwsS3DownloadDAO" id="awsS3DownloadFuncs">
+        <constructor-arg value="${awsS3DownloadDynamoTablename}"/>
+    </bean>
+
+    <bean class="com.amazonaws.services.sqs.AmazonSQSClient"/>
+
+    <int:bridge input-channel="outputUpdateStatusChannel" output-channel="nullChannel"/>
+    <int:logging-channel-adapter channel="outputUpdateStatusChannel"/>
+
+</beans>

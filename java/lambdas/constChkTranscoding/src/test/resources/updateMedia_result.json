@@ -1,0 +1,140 @@
+{
+  "query": {
+    "mediaid": "yeah1481667918452",
+    "format": [
+      {
+        "identification": "default video1500",
+        "configName": "default video1500",
+        "enabled": true,
+        "baseConfigId": "default video",
+        "width": "2",
+        "height": "3",
+        "destination": "https://234567890@cs-cloud-dev-gary--download.s3.amazonaws.com/video/mb/null/1500k.mp4",
+        "bitrate": "1500k",
+        "size": "2x3"
+      },
+      {
+        "identification": "default first frame",
+        "configName": "thumb root",
+        "lastModifiedTime": 0,
+        "enabled": true,
+        "time": "5%",
+        "width": "2",
+        "height": "3",
+        "output": "thumbnail",
+        "destination": "https://234567890@cs-cloud-dev-gary--download.s3.amazonaws.com/video/null/2x3_5p.jpeg",
+        "size": "2x3"
+      },
+      {
+        "identification": "default video",
+        "configName": "video root",
+        "lastModifiedTime": 0,
+        "enabled": true,
+        "output": "mp4",
+        "keyframe": "90",
+        "destination": "https://234567890@cs-cloud-dev-gary--download.s3.amazonaws.com/video/null/1000k.mp4",
+        "audio_bitrate": "128k",
+        "audio_codec": "libfaac",
+        "audio_sample_rate": "44100",
+        "audio_volume": "100",
+        "bitrate": "1000k",
+        "framerate": "29",
+        "hint": "no",
+        "keep_aspect_ratio": "yes",
+        "profile": "baseline",
+        "size": "2x3",
+        "turbo": "no",
+        "two_pass": "yes",
+        "video_codec": "libx264"
+      },
+      {
+        "identification": "default thumb",
+        "configName": "thumb root 5%",
+        "lastModifiedTime": 0,
+        "enabled": true,
+        "baseConfigId": "default first frame",
+        "time": "5%",
+        "width": "200",
+        "height": "112",
+        "output": "thumbnail",
+        "destination": "https://234567890@cs-cloud-dev-gary--download.s3.amazonaws.com/video/null/200x112_5p.jpeg",
+        "size": "200x112"
+      },
+      {
+        "identification": "default video2000",
+        "configName": "default video2000",
+        "enabled": true,
+        "baseConfigId": "default video",
+        "width": "2",
+        "height": "3",
+        "destination": "https://234567890@cs-cloud-dev-gary--download.s3.amazonaws.com/video/mb/null/2000k.mp4",
+        "bitrate": "2000k",
+        "size": "2x3"
+      },
+      {
+        "identification": "default video1000",
+        "configName": "default video1000",
+        "enabled": true,
+        "baseConfigId": "default video",
+        "width": "2",
+        "height": "3",
+        "destination": "https://234567890@cs-cloud-dev-gary--download.s3.amazonaws.com/video/mb/null/1000k.mp4",
+        "bitrate": "1000k",
+        "size": "2x3"
+      },
+      {
+        "identification": "default video1250",
+        "configName": "default video1250",
+        "enabled": true,
+        "baseConfigId": "default video",
+        "width": "2",
+        "height": "3",
+        "destination": "https://234567890@cs-cloud-dev-gary--download.s3.amazonaws.com/video/mb/null/1250k.mp4",
+        "bitrate": "1250k",
+        "size": "2x3"
+      },
+      {
+        "identification": "default video2500",
+        "configName": "default video2500",
+        "enabled": true,
+        "baseConfigId": "default video",
+        "width": "2",
+        "height": "3",
+        "destination": "https://234567890@cs-cloud-dev-gary--download.s3.amazonaws.com/video/mb/null/2500k.mp4",
+        "bitrate": "2500k",
+        "size": "2x3"
+      },
+      {
+        "identification": "default post frame",
+        "configName": "thumb root 0.02",
+        "lastModifiedTime": 0,
+        "enabled": true,
+        "baseConfigId": "default first frame",
+        "time": "0.02",
+        "width": "2",
+        "height": "3",
+        "output": "thumbnail",
+        "destination": "https://234567890@cs-cloud-dev-gary--download.s3.amazonaws.com/video/null/2x3_0_02.jpeg",
+        "size": "2x3"
+      },
+      {
+        "identification": "default video4500",
+        "configName": "default video4500",
+        "enabled": true,
+        "baseConfigId": "default video",
+        "width": "2",
+        "height": "3",
+        "destination": "https://234567890@cs-cloud-dev-gary--download.s3.amazonaws.com/video/mb/null/4500k.mp4",
+        "bitrate": "4500k",
+        "size": "2x3"
+      }
+    ],
+    "userid": "fakeUserIdForEncodingCom;",
+    "userkey": "fakeUserkeyForEncodingCom;",
+    "action": "UpdateMedia",
+    "notify_format": "json",
+    "notify": "fakeUrlCalledByEncodingCom;",
+    "notify_upload": "fakeUrlCalledByEncodingCom;",
+    "notify_encoding_errors": "fakeUrlCalledByEncodingCom;"
+  }
+}

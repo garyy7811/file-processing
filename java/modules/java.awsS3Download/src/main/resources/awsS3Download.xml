@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+       http://www.springframework.org/schema/beans/spring-beans.xsd"
+       default-lazy-init="true">
+
+    <bean class="org.pubanatomy.awsS3Download.AwsS3DownloadDAO" id="awsS3DownloadFuncs">
+        <constructor-arg value="${awsS3DownloadDynamoTablename}"/>
+    </bean>
+
+    <bean class="org.pubanatomy.awsS3Download.AwsS3DownloadService" id="awsS3DownloadService">
+        <constructor-arg value="classpath:APKAIEQLPKFFN53SW5ZQ.der"/>
+        <constructor-arg value="${rootUserId}"/>
+    </bean>
+
+</beans>

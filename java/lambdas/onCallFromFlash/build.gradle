@@ -1,0 +1,39 @@
+mainClassName = "com.customshow.lambda.OnCallFromFlash"
+
+dependencies {
+    compile project( ":java_modules:java.aws.utils" )
+    compile project( ':java_modules:java.awsS3Upload' )
+    compile project( ':java_modules:java.awsS3Download' )
+    compile project( ':java_modules:java.videotranscoding' )
+
+    compile "org.springframework.integration:spring-integration-file:$springIntegrationVersion"
+
+}
+
+
+processResources.dependsOn rootProject.project( ":java_modules" ).tasks.createSQS
+processResources.dependsOn rootProject.project( ":java_modules" ).tasks.createBucketsDistribution
+
+
+ext.lambdaEnvNames.add( "runtimeAwsAccessKeyId" )
+ext.lambdaEnvNames.add( "runtimeAwsSecretAccessKey" )
+ext.lambdaEnvNames.add( "awsConfigPerClientDynamoTablename" )
+ext.lambdaEnvNames.add( "awsS3UploadDynamoTablename" )
+ext.lambdaEnvNames.add( "awsS3UploadUrl" )
+ext.lambdaEnvNames.add( "awsS3UploadBucket" )
+ext.lambdaEnvNames.add( "urlCalledByEncodingCom" )
+ext.lambdaEnvNames.add( "userIdForEncodingCom" )
+ext.lambdaEnvNames.add( "userkeyForEncodingCom" )
+ext.lambdaEnvNames.add( "awsS3DownloadBucket" )
+ext.lambdaEnvNames.add( "awsTranscodingDynamoTablename" )
+ext.lambdaEnvNames.add( "encodingComApiUrl" )
+ext.lambdaEnvNames.add( "encodingComApiTimeout" )
+ext.lambdaEnvNames.add( "awsS3DownloadDynamoTablename" )
+ext.lambdaEnvNames.add( "backToUpdateStatusInMin" )
+ext.lambdaEnvNames.add( "resourceStatusQueueUrl" )
+ext.lambdaEnvNames.add( "awsS3DownloadUrl" )
+ext.lambdaEnvNames.add( "rootUserId" )
+ext.lambdaEnvNames.add( "awsLoginVerificationDynamoTablename" )
+ext.lambdaEnvNames.add( "awsS3DownloadBucketAccessKeyAndEncodedSecret" )
+ext.lambdaEnvNames.add( "elasticsearchIndexNameFromDynamoDB" )
+ext.lambdaEnvNames.add( "queryElasticsearchUrl" )

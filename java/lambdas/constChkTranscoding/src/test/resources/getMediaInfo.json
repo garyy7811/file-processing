@@ -1,0 +1,12 @@
+{
+  "query": {
+    "mediaid": "91796247",
+    "userid": "85296",
+    "userkey": "20d39e44aacf122ead3cba26a830c17f",
+    "action": "GetMediaInfo",
+    "notify_format": "json",
+    "notify": "https://hr7fu0poyf.execute-api.us-east-1.amazonaws.com/a/encoding-com/-dummy-",
+    "notify_upload": "https://hr7fu0poyf.execute-api.us-east-1.amazonaws.com/a/encoding-com/-dummy-",
+    "notify_encoding_errors": "https://hr7fu0poyf.execute-api.us-east-1.amazonaws.com/a/encoding-com/-dummy-"
+  }
+}

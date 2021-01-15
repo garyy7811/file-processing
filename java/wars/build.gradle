@@ -1,0 +1,60 @@
+buildscript {
+    repositories {
+        mavenCentral()
+        jcenter()
+    }
+    dependencies {
+        classpath 'com.bmuschko:gradle-cargo-plugin:2.2.1'
+    }
+}
+
+apply from: '../gradle/java.gradle'
+
+subprojects {
+
+    apply plugin: 'war'
+    apply plugin: 'com.bmuschko.cargo'
+
+    if( csConfig.csDeployTomcatPort?.trim() ){
+        cargo {
+            containerId = 'tomcat8x';
+            port = Integer.parseInt( csConfig.csDeployTomcatPort )
+            remote {
+                protocol = csConfig.csDeployTomcatProtocol
+                hostname = csConfig.csDeployTomcatHostname
+                port = Integer.parseInt( csConfig.csDeployTomcatPort )
+                username = csConfig.csDeployTomcatUsername
+                password = csConfig.csDeployTomcatPassword
+            }
+            deployable {
+                context = csConfig.csDeployContextPath
+            }
+        }
+    }
+
+    dependencies {
+        compile "org.springframework:spring-web:$springVersion"
+        compile "org.springframework:spring-webmvc:$springVersion"
+        compile "org.springframework.integration:spring-integration-http:$springIntegrationVersion"
+        compile "org.springframework.integration:spring-integration-groovy:$springIntegrationVersion"
+        compile "org.springframework.integration:spring-integration-file:$springIntegrationVersion"
+        compile "net.sf.ehcache:ehcache:2.10.1"
+    }
+    artifacts{
+        archives war
+    }
+    war.dependsOn test
+    cargoRedeployRemote.dependsOn war
+
+    afterEvaluate {
+        if( tasks.hasProperty( 'war' ) ){
+            war.doLast {
+                copy {
+                    from zipTree( file( buildDir.absolutePath + "/libs/" + war.archiveName ) )
+                    into buildDir.absolutePath + "/exploded"
+                    include '**/*.*'
+                }
+            }
+        }
+    }
+}

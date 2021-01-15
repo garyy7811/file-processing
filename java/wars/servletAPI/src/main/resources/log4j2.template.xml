@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="debug">
+    <Appenders>
+        <Console name="CONSOLE" target="SYSTEM_OUT">
+            <PatternLayout pattern="%d{yyyy-MM-dd HH:mm:ss,SSS Z}∈%t∋∈%c∋∈%M∋∈%F∋∈%L∋∈%level{lowerCase=true}∋%m%n"/>
+        </Console>
+        <Console name="CONSOLE_FLA" target="SYSTEM_OUT">
+            <PatternLayout pattern="∈∈∈%replace{%m}{(\r|\n)}{⊃}∋∋∋%n" alwaysWriteExceptions="false"/>
+        </Console>
+    </Appenders>
+    <Loggers>
+        <Logger additivity="false" name="org.pubanatomy.siutils.FlashLogging" level="FATAL">
+            <AppenderRef ref="CONSOLE_FLA"/>
+        </Logger>
+        <Logger additivity="false" name="com.customshow" level="debug">
+            <AppenderRef ref="CONSOLE"/>
+        </Logger>
+        <Root additivity="false" level="warn" >
+            <AppenderRef ref="CONSOLE"/>
+        </Root>
+    </Loggers>
+</Configuration>

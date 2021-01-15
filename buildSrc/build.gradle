@@ -1,0 +1,43 @@
+buildscript {
+    repositories {
+        maven {
+            url project[ 'mavenDependencyRepoUrl' ]
+        }
+    }
+}
+
+allprojects {
+    repositories {
+        mavenCentral()
+    }
+
+    apply plugin: 'java'
+    apply plugin: 'groovy'
+    apply plugin: 'maven'
+
+    dependencies {
+        compile gradleApi()
+        compile localGroovy()
+        compile "com.amazonaws:aws-java-sdk:1.11.86"
+        compile "org.apache.logging.log4j:log4j-api:2.7"
+        compile "org.apache.logging.log4j:log4j-core:2.7"
+
+        compile "org.apache.commons:commons-lang3:3.1"
+
+        // https://mvnrepository.com/artifact/com.github.docker-java/docker-java
+        compile group: 'com.github.docker-java', name: 'docker-java', version: '3.0.11'
+
+//        compile "org.elasticsearch.client:rest:$elasticsearchVersion"
+
+        // https://mvnrepository.com/artifact/org.springframework.data/spring-data-elasticsearch
+        compile group: 'org.springframework.data', name: 'spring-data-elasticsearch', version: '2.1.0.RELEASE'
+
+
+
+        testCompile 'junit:junit:4.12'
+    }
+
+    rootProject.dependencies {
+        runtime project( path )
+    }
+}

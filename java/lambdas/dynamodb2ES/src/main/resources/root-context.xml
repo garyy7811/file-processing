@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:util="http://www.springframework.org/schema/util"
+       xmlns:elasticsearch="http://www.springframework.org/schema/data/elasticsearch"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+       http://www.springframework.org/schema/beans/spring-beans.xsd
+       http://www.springframework.org/schema/context
+       http://www.springframework.org/schema/context/spring-context.xsd
+        http://www.springframework.org/schema/util
+        http://www.springframework.org/schema/util/spring-util.xsd
+        http://www.springframework.org/schema/data/elasticsearch
+        http://www.springframework.org/schema/data/elasticsearch/spring-elasticsearch.xsd" default-lazy-init="true">
+
+    <context:property-placeholder/>
+
+    <context:annotation-config/>
+
+
+    <bean class="com.amazonaws.auth.DefaultAWSCredentialsProviderChain"/>
+
+    <bean id="dynamoDBClient" class="com.amazonaws.services.dynamodbv2.AmazonDynamoDBClient"/>
+
+    <elasticsearch:transport-client id="client" client-transport-sniff="false"
+                                    cluster-name="elasticsearch" cluster-nodes="${dynamo2esElasticsearchUrl}"/>
+
+    <bean id="elasticsearchTemplate"
+          class="org.springframework.data.elasticsearch.core.ElasticsearchTemplate">
+        <constructor-arg name="client" ref="client"/>
+    </bean>
+
+
+    <bean class="org.pubanatomy.awsutils.DynamoElasticSearch">
+        <constructor-arg>
+            <util:map>
+                <entry key="${awsLoginVerificationDynamoTablename}"
+                       value="#{T(org.pubanatomy.loginverify.DynaLogInSessionInfo)}"/>
+                <entry key="${awsS3UploadDynamoTablename}"
+                       value="#{T(org.pubanatomy.awsS3Upload.DynaTableAwsS3Upload)}"/>
+                <entry key="${awsConfigPerClientDynamoTablename}"
+                       value="#{T(org.pubanatomy.configPerClient.DynaTableClientConfig)}"/>
+                <entry key="${awsTranscodingDynamoTablename}"
+                       value="#{T(org.pubanatomy.videotranscoding.DynaTableVideoTranscoding)}"/>
+                <entry key="${awsS3DownloadDynamoTablename}"
+                       value="#{T(org.pubanatomy.awsS3Download.DynaTableNVResource)}"/>
+                <entry key="${awsS3IndexDynamoTablename}"
+                       value="#{T(org.pubanatomy.awsutils.S3ObjectDetails)}"/>
+                <entry key="${awsMigrateResourceErrorsTableName}"
+                       value="#{T(org.pubanatomy.migrationutils.MigrationErrorRecord)}"/>
+            </util:map>
+        </constructor-arg>
+        <constructor-arg value="${elasticsearchIndexNameFromDynamoDB}"/>
+    </bean>
+
+
+</beans>

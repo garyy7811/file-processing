@@ -1,0 +1,45 @@
+import org.pubanatomy.awsUtils.AddScheduleEventTriggerToLambda
+
+mainClassName = "ConstChkTranscoding"
+
+dependencies {
+    compile project( ':java_modules:java.videotranscoding' )
+}
+
+
+
+configurations {
+    compile.exclude module: "elasticsearch"
+}
+
+if( tasks.hasProperty( "migrateFunction" ) ){
+    task addScheduleEventTrigger( type: AddScheduleEventTriggerToLambda ) {
+        awsRegion = csConfig.aws_region
+        lambdaFunctionName = csConfig.awsLambdaFunctionName
+        ruleNamePrefix = csConfig.cs_config.split( "/" ).last().split( "\\." )[ 0 ] + "-cleanup"
+    }
+    addScheduleEventTrigger.dependsOn migrateFunction
+    deployFunctionWithTriggers.dependsOn addScheduleEventTrigger
+}
+
+
+project.ext.warmup = false
+
+test.dependsOn rootProject.project( ":java_modules" ).tasks.createDynaTablesForTests
+
+ext.lambdaEnvNames.add( "urlCalledByEncodingCom" )
+ext.lambdaEnvNames.add( "userIdForEncodingCom" )
+ext.lambdaEnvNames.add( "userkeyForEncodingCom" )
+ext.lambdaEnvNames.add( "encodingComApiUrl" )
+ext.lambdaEnvNames.add( "encodingComApiTimeout" )
+ext.lambdaEnvNames.add( "awsTranscodingDynamoTablename" )
+ext.lambdaEnvNames.add( "awsS3UploadDynamoTablename" )
+ext.lambdaEnvNames.add( "awsS3DownloadBucket" )
+ext.lambdaEnvNames.add( "awsS3DownloadDynamoTablename" )
+ext.lambdaEnvNames.add( "awsConfigPerClientDynamoTablename" )
+ext.lambdaEnvNames.add( "backToUpdateStatusInMin" )
+ext.lambdaEnvNames.add( "awsS3DownloadBucketAccessKeyAndEncodedSecret" )
+ext.lambdaEnvNames.add( "rootUserId" )
+ext.lambdaEnvNames.add( "awsS3UploadBucket" )
+ext.lambdaEnvNames.add( "awsS3UploadUrl" )
+ext.lambdaEnvNames.add( "awsLoginVerificationDynamoTablename" )

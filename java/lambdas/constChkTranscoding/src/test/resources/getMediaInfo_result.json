@@ -1,0 +1,15 @@
+{
+  "response": {
+    "bitrate": "2520k",
+    "duration": "7.88",
+    "video_duration": "7.88",
+    "video_codec": "h264 (Constrained Baseline)",
+    "size": "1920x1080",
+    "video_bitrate": "2518k",
+    "pixel_aspect_ratio": "1:1",
+    "display_aspect_ratio": "16:9",
+    "frame_rate": "25",
+    "format": "mpeg-4",
+    "filesize": "2482393"
+  }
+}

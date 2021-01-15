@@ -1,0 +1,12 @@
+mainClassName = "com.customshow.lambda.OnSearchQuery"
+
+dependencies{
+    compile project( ":java_modules:java.aws.utils" )
+    compile project( ":java_modules:java.search.query" )
+}
+
+
+
+ext.lambdaEnvNames.add( "elasticsearchRESTURLs" )
+ext.lambdaEnvNames.add( "searchIndexName" )
+ext.lambdaEnvNames.add( "awsLoginVerificationDynamoTablename" )

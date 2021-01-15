@@ -1,0 +1,20 @@
+dependencies {
+
+    compile project( ":java_modules:java.aws.utils" )
+    compile project( ':java_modules:java.awsS3Upload' )
+    compile project( ':java_modules:java.awsS3Download' )
+    compile project( ':java_modules:java.videotranscoding' )
+    compile project( ':java_modules:java.reporting.solr.query' )
+//    compile project( ":java:modules:java.search.query" )
+
+    compile "com.amazonaws:aws-java-sdk:$awsSdkVersion"
+    compile "org.springframework.boot:spring-boot-starter-web"
+    compile "org.springframework.integration:spring-integration-http:$springIntegrationVersion"
+
+}
+
+createEcsTaskDef.domainName = "dev-gary--apie5.cs.cc"
+
+//createEcsTaskDef.memoryLimit = 512
+
+project.ext.dockerMappingPorts = csConfig.bootApi_serverPort

@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:int="http://www.springframework.org/schema/integration"
+       xmlns:int-groovy="http://www.springframework.org/schema/integration/groovy"
+       xmlns:utils="http://www.springframework.org/schema/util"
+       xmlns:tx="http://www.springframework.org/schema/tx"
+       xmlns:task="http://www.springframework.org/schema/task"
+       xmlns:int-http="http://www.springframework.org/schema/integration/http"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+       http://www.springframework.org/schema/beans/spring-beans.xsd
+       http://www.springframework.org/schema/context
+       http://www.springframework.org/schema/context/spring-context.xsd
+       http://www.springframework.org/schema/integration
+       http://www.springframework.org/schema/integration/spring-integration.xsd
+       http://www.springframework.org/schema/integration/groovy
+       http://www.springframework.org/schema/integration/groovy/spring-integration-groovy.xsd
+       http://www.springframework.org/schema/util
+       http://www.springframework.org/schema/util/spring-util.xsd
+       http://www.springframework.org/schema/tx
+       http://www.springframework.org/schema/tx/spring-tx.xsd
+       http://www.springframework.org/schema/task
+       http://www.springframework.org/schema/task/spring-task.xsd
+       http://www.springframework.org/schema/integration/http
+       http://www.springframework.org/schema/integration/http/spring-integration-http.xsd">
+    <context:property-placeholder location="classpath:test-config.properties"/>
+    <context:annotation-config/>
+
+    <!-->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>-->
+    <bean id="resJobMock" class="org.pubanatomy.test.unit.RemotePartition$DoJobMock">
+        <constructor-arg ref="slideResourceContentPartitioning"/>
+    </bean>
+
+    <int:inbound-channel-adapter id="resourceInputAdapter" channel="resFilterNullIn"
+                                 auto-startup="true" ref="resJobMock" method="getRange">
+        <int:poller fixed-delay="500" max-messages-per-poll="3"/>
+    </int:inbound-channel-adapter>
+
+    <int:filter expression="payload.length==2" input-channel="resFilterNullIn" output-channel="resourceSource"/>
+
+    <task:executor id="resExecutor" pool-size="3"/>
+    <int:channel id="resourceSource">
+        <int:dispatcher task-executor="resExecutor"/>
+    </int:channel>
+
+    <int:chain input-channel="resourceSource" output-channel="resourceEnd">
+        <int:service-activator ref="resJobMock" method="work"/>
+    </int:chain>
+
+    <int:channel id="resourceEnd"/>
+    <int:outbound-channel-adapter channel="resourceEnd" ref="resJobMock" method="doneRange"/>
+
+
+    <int:gateway id="slideResourceContentPartitioning"
+                 service-interface="org.pubanatomy.batchpartition.RangePartitionService"
+                 default-request-channel="queryPartitionThroughHttp" default-reply-channel="replyPartitionThroughHttp"
+                 default-payload-expression="#args">
+        <int:default-header name="methodName" expression="#gatewayMethod.name"/>
+        <int:default-header name="serviceName" value="slideResourceContentPartitioning"/>
+        <int:method name="cleanUnfinishedStatuses" payload-expression="#args"/>
+    </int:gateway>
+
+    <!--<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<-->
+
+
+    <!-->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>-->
+
+    <bean id="thumbJobMock" class="org.pubanatomy.test.unit.RemotePartition$DoJobMock">
+        <constructor-arg ref="slideThumbnailPartitioning"/>
+    </bean>
+
+    <int:inbound-channel-adapter id="thumbInputAdapter" channel="thumbFilterNullIn"
+                                 auto-startup="true" ref="thumbJobMock" method="getRange">
+        <int:poller fixed-delay="500" max-messages-per-poll="3"/>
+    </int:inbound-channel-adapter>
+
+    <int:filter expression="payload.length==2" input-channel="thumbFilterNullIn" output-channel="thumbSource"/>
+
+    <task:executor id="thumbExecutor" pool-size="3"/>
+    <int:channel id="thumbSource">
+        <int:dispatcher task-executor="thumbExecutor"/>
+    </int:channel>
+
+    <int:chain input-channel="thumbSource" output-channel="thumbEnd">
+        <int:service-activator ref="thumbJobMock" method="work"/>
+    </int:chain>
+
+    <int:channel id="thumbEnd"/>
+    <int:outbound-channel-adapter channel="thumbEnd" ref="thumbJobMock" method="doneRange"/>
+
+
+    <int:gateway id="slideThumbnailPartitioning" service-interface="org.pubanatomy.batchpartition.RangePartitionService"
+                 default-request-channel="queryPartitionThroughHttp" default-reply-channel="replyPartitionThroughHttp"
+                 default-payload-expression="#args">
+        <int:default-header name="methodName" expression="#gatewayMethod.name"/>
+        <int:default-header name="serviceName" value="slideThumbnailPartitioning"/>
+        <int:method name="cleanUnfinishedStatuses" payload-expression="#args"/>
+    </int:gateway>
+
+    <!--<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<-->
+
+    <int:channel id="queryPartitionThroughHttp"/>
+    <int:channel id="replyPartitionThroughHttp">
+        <int:queue capacity="20"/>
+    </int:channel>
+
+    <int:chain input-channel="queryPartitionThroughHttp" output-channel="replyPartitionThroughHttp">
+        <int:payload-serializing-transformer/>
+        <int:header-enricher>
+            <int:header name="Content-Type" value="application/octet-stream"/>
+        </int:header-enricher>
+        <int-http:outbound-gateway message-converters="byteArrayHttpMessageConverter"
+                                   url="${remotePartitionWebserviceUrl}/{serviceName}/{methodName}"
+                                   http-method="POST"
+                                   reply-timeout="${remotePartitionWebserviceTimeout}"
+                                   expected-response-type="byte[]">
+            <int-http:uri-variable name="methodName" expression="headers.methodName"/>
+            <int-http:uri-variable name="serviceName" expression="headers.serviceName"/>
+            <int-http:request-handler-advice-chain>
+                <int:retry-advice max-attempts="12"/>
+            </int-http:request-handler-advice-chain>
+        </int-http:outbound-gateway>
+        <int:payload-deserializing-transformer/>
+    </int:chain>
+
+    <bean id="byteArrayHttpMessageConverter"
+          class="org.springframework.http.converter.ByteArrayHttpMessageConverter"/>
+
+</beans>

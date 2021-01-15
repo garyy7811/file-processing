@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:int="http://www.springframework.org/schema/integration"
+       xmlns:int-http="http://www.springframework.org/schema/integration/http"
+       xmlns:int-groovy="http://www.springframework.org/schema/integration/groovy"
+       xmlns:cache="http://www.springframework.org/schema/cache"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+            http://www.springframework.org/schema/beans/spring-beans.xsd
+            http://www.springframework.org/schema/context
+            http://www.springframework.org/schema/context/spring-context.xsd
+            http://www.springframework.org/schema/integration/http
+            http://www.springframework.org/schema/integration/http/spring-integration-http.xsd
+            http://www.springframework.org/schema/integration/groovy
+            http://www.springframework.org/schema/integration/groovy/spring-integration-groovy.xsd
+            http://www.springframework.org/schema/cache
+            http://www.springframework.org/schema/cache/spring-cache.xsd">
+
+    <context:property-placeholder location="classpath:config.properties"/>
+
+    <context:annotation-config/>
+
+    <import resource="mysql.remote.host.xml"/>
+
+    <cache:annotation-driven/>
+
+    <bean id="cacheManager" class="org.springframework.cache.ehcache.EhCacheCacheManager">
+        <property name="cacheManager">
+            <bean class="org.springframework.cache.ehcache.EhCacheManagerFactoryBean">
+                <property name="configLocation" value="classpath:/my-ehcache.xml"/>
+                <property name="shared" value="true"/>
+            </bean>
+        </property>
+    </bean>
+
+
+    <bean id="nvJdbcTemplate" name="newVictoryMySQL" class="org.springframework.jdbc.core.JdbcTemplate">
+        <property name="dataSource">
+            <bean class="org.apache.commons.dbcp2.BasicDataSource" destroy-method="close">
+                <property name="driverClassName" value="com.mysql.jdbc.Driver"/>
+                <property name="url" value="${nvJdbcUrl}"/>
+                <property name="username" value="${nvJdbcUser}"/>
+                <property name="password" value="${nvJdbcPassword}"/>
+            </bean>
+        </property>
+    </bean>
+
+</beans>

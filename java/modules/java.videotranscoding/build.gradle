@@ -1,0 +1,10 @@
+dependencies {
+    compile project( ":java_modules:java.config.per.client" )
+    compile project( ":java_modules:java.awsS3Upload" )
+    compile project( ":java_modules:java.awsS3Download" )
+
+    compile "org.springframework:spring-web:$springVersion"
+    compile "org.springframework:spring-webmvc:$springVersion"
+    compile "com.amazonaws:aws-java-sdk-lambda:$awsSdkVersion"
+    compile "org.springframework.integration:spring-integration-http:$springIntegrationVersion"
+}

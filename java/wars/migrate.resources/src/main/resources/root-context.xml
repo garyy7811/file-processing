@@ -1,0 +1,243 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:int="http://www.springframework.org/schema/integration"
+       xmlns:int-groovy="http://www.springframework.org/schema/integration/groovy"
+       xmlns:task="http://www.springframework.org/schema/task"
+       xmlns:int-http="http://www.springframework.org/schema/integration/http"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+       http://www.springframework.org/schema/beans/spring-beans.xsd
+       http://www.springframework.org/schema/context
+       http://www.springframework.org/schema/context/spring-context.xsd
+       http://www.springframework.org/schema/integration
+       http://www.springframework.org/schema/integration/spring-integration.xsd
+       http://www.springframework.org/schema/integration/groovy
+       http://www.springframework.org/schema/integration/groovy/spring-integration-groovy.xsd
+       http://www.springframework.org/schema/task
+       http://www.springframework.org/schema/task/spring-task.xsd
+       http://www.springframework.org/schema/integration/http
+       http://www.springframework.org/schema/integration/http/spring-integration-http.xsd">
+
+    <context:property-placeholder location="classpath:config.properties"/>
+
+    <context:annotation-config/>
+
+    <import resource="mysql.remote.query.xml"/>
+
+    <bean id="nvJdbcTemplate" name="newVictoryMySQL" class="org.springframework.jdbc.core.JdbcTemplate">
+        <property name="dataSource">
+            <bean class="org.apache.commons.dbcp2.BasicDataSource" destroy-method="close">
+                <property name="driverClassName" value="com.mysql.jdbc.Driver"/>
+                <property name="url" value="${nvJdbcUrl}"/>
+                <property name="username" value="${nvJdbcUser}"/>
+                <property name="password" value="${nvJdbcPassword}"/>
+            </bean>
+        </property>
+    </bean>
+
+    <bean id="environmentConfig" class="org.pubanatomy.migrateResources.EnvironmentConfig">
+        <constructor-arg value="${limelightThumbnailContext}"/>
+        <constructor-arg value="${limelightPosterFrameContext}"/>
+        <constructor-arg value="${limelightFlashContext}"/>
+        <constructor-arg value="${limelightImageContext}"/>
+        <constructor-arg value="${limelightVideoContext}"/>
+        <constructor-arg value="${limelightEnvDirectory}"/>
+        <constructor-arg value="${limelightUnsecurePath}"/>
+        <constructor-arg value="${limelightSecurePath}"/>
+        <constructor-arg value="${limelightMediaVaultSecret}"/>
+        <constructor-arg value="${limelightHttpUrlBase}"/>
+        <constructor-arg value="${limelightMultibitratePath}"/>
+        <constructor-arg value="${labyrinthHttpUrlBase}"/>
+        <constructor-arg value="${labyrinthWebCacheRoot}"/>
+        <constructor-arg value="${labyrinthImageCache}"/>
+        <constructor-arg value="${labyrinthFlashCache}"/>
+        <constructor-arg value="${labyrinthVideoCache}"/>
+        <constructor-arg value="${labyrinthThumbnailCache}"/>
+        <constructor-arg value="${labyrinthPosterFrameCache}"/>
+        <constructor-arg value="${labyrinthS3bucket}"/>
+    </bean>
+
+
+    <bean id="errorStats" class="org.pubanatomy.migrateResources.status.ErrorStats"/>
+
+
+    <bean id="resourceStats" class="org.pubanatomy.migrateResources.status.ResourceStats">
+        <property name="resourceStartId" value="${slideResource.startId}"/>
+        <property name="resourceBatchSize" value="${slideResource.batchSize}"/>
+        <property name="resourceThreads" value="${slideResource.thread.pool.size}"/>
+    </bean>
+
+    <bean id="slideStats" class="org.pubanatomy.migrateResources.status.SlideStats">
+        <property name="slideStartId" value="${slideThumbnail.startId}"/>
+        <property name="slideBatchSize" value="${slideThumbnail.batchSize}"/>
+        <property name="slideThreads" value="${slideThumbnail.thread.pool.size}"/>
+    </bean>
+
+
+    <bean id="statsReporter" class="org.pubanatomy.migrateResources.status.StatsReporter"/>
+
+    <bean id="slideResourceProcessor" class="org.pubanatomy.migrateResources.CopySlideResourcesProcessor"/>
+
+    <bean id="posterFramesProcessor" class="org.pubanatomy.migrateResources.CopyPosterFramesProcessor"/>
+
+    <!-- no longer able to migrate multiBitrate videos because they were never on the app server! -->
+    <!--<bean id="multiBitrateVideosProcessor" class="CopyMultiBitrateVideosProcessor"/>-->
+
+    <bean id="resourceThumbnailsProcessor" class="org.pubanatomy.migrateResources.CopyResourceThumbnailsProcessor"/>
+
+    <bean id="slideThumbnailsProcessor" class="org.pubanatomy.migrateResources.CopySlideThumbnailsProcessor"/>
+
+    <bean id="updatedSlideThumbnailsProcessor" class="org.pubanatomy.migrateResources.rescan.RescanSlideThumbnailsProcessor"/>
+
+    <bean id="basicAWSCredentials" class="com.amazonaws.auth.BasicAWSCredentials">
+        <constructor-arg value="${runtimeAwsAccessKeyId}"/>
+        <constructor-arg value="${runtimeAwsSecretAccessKey}"/>
+    </bean>
+
+    <bean id="staticCredentialsProvider" class="com.amazonaws.internal.StaticCredentialsProvider">
+        <constructor-arg ref="basicAWSCredentials"/>
+    </bean>
+
+    <bean id="s3Client" class="com.amazonaws.services.s3.AmazonS3Client">
+        <constructor-arg ref="basicAWSCredentials"/>
+        <constructor-arg>
+            <bean class="com.amazonaws.ClientConfiguration">
+                <property name="signerOverride" value="S3SignerType"/>
+            </bean>
+        </constructor-arg>
+    </bean>
+
+    <bean id="dynamoDBClient" class="com.amazonaws.services.dynamodbv2.AmazonDynamoDBClient">
+        <constructor-arg ref="basicAWSCredentials"/>
+    </bean>
+
+    <bean id="dynamoDBMapperConfig" class="com.amazonaws.services.dynamodbv2.datamodeling.DynamoDBMapperConfig">
+        <constructor-arg>
+            <bean class="com.amazonaws.services.dynamodbv2.datamodeling.DynamoDBMapperConfig$TableNameOverride">
+                <constructor-arg value="${labyrinthErrorTrackTable}"/>
+            </bean>
+        </constructor-arg>
+    </bean>
+
+    <!--********************************************************************-->
+
+    <!-- Import partitioner (local or remote) <<<<<<<<<<-->
+
+    <import resource="partitioner-local.xml"/>
+
+    <!--********************************************************************-->
+
+    <!-- configure resource migration -->
+
+    <int:inbound-channel-adapter id="resourceInputAdapter" channel="filterNullIn"
+                                 auto-startup="${slideResource.autostartup}">
+        <int:poller fixed-delay="${triggerFixedDelay}" max-messages-per-poll="3"/>
+        <int-groovy:script><![CDATA[
+
+            int currentQueueSize = resExecutor.getThreadPoolExecutor().getQueue().size()
+            System.out.println("resExecutor.currentQueueSize: " +currentQueueSize)
+            int maxPoolSize = resExecutor.getMaxPoolSize()
+            System.out.println("resExecutor.maxPoolSize: " +maxPoolSize)
+
+            if (currentQueueSize >= maxPoolSize) {
+                System.out.println("resExecutor reached max capacitiy - throttling")
+                return null
+            }
+
+            slideResourceProcessor.requestNextRange()
+        ]]></int-groovy:script>
+    </int:inbound-channel-adapter>
+
+    <int:filter expression="payload!=null" input-channel="filterNullIn" output-channel="resourceSource"/>
+
+    <task:executor id="resExecutor" pool-size="${slideResource.thread.pool.size}"/>
+    <int:channel id="resourceSource">
+        <int:dispatcher task-executor="resExecutor"/>
+    </int:channel>
+
+    <int:chain input-channel="resourceSource" output-channel="resourceEnd">
+        <int:service-activator ref="slideResourceProcessor" method="selectItemRange"/>
+        <int:service-activator ref="slideResourceProcessor" method="processRange"/>
+    </int:chain>
+
+    <int:channel id="resourceEnd"/>
+    <int:outbound-channel-adapter channel="resourceEnd">
+        <int-groovy:script><![CDATA[
+            slideResourceProcessor.markRangeComplete(payload)
+            null
+        ]]></int-groovy:script>
+    </int:outbound-channel-adapter>
+
+    <!--********************************************************************************-->
+
+    <!-- configure slideThumbnail migration -->
+
+    <int:inbound-channel-adapter id="slideThumbnailInputAdapter" channel="filterNullSlideThumbIn"
+                                 auto-startup="${slideThumbnail.autostartup}">
+        <int:poller fixed-delay="${triggerFixedDelay}" max-messages-per-poll="${slideThumbnail.thread.pool.size}"/>
+        <int-groovy:script><![CDATA[
+
+            int currentQueueSize = slideThumbnailExecutor.getThreadPoolExecutor().getQueue().size()
+            System.out.println("slideThumbnailExecutor.currentQueueSize: " +currentQueueSize)
+            int maxPoolSize = slideThumbnailExecutor.getMaxPoolSize()
+            System.out.println("slideThumbnailExecutor.maxPoolSize: " +maxPoolSize)
+
+            if (currentQueueSize >= maxPoolSize) {
+                System.out.println("slideThumbnailExecutor reached max capacitiy - throttling")
+                return null
+            }
+
+            slideThumbnailsProcessor.requestNextRange()
+        ]]></int-groovy:script>
+    </int:inbound-channel-adapter>
+
+    <int:filter expression="payload!=null" input-channel="filterNullSlideThumbIn"
+                output-channel="slideThumbnailSource"/>
+
+    <task:executor id="slideThumbnailExecutor" pool-size="${slideThumbnail.thread.pool.size}"/>
+    <int:channel id="slideThumbnailSource">
+        <int:dispatcher task-executor="slideThumbnailExecutor"/>
+    </int:channel>
+
+    <int:chain input-channel="slideThumbnailSource" output-channel="slideThumbnailEnd">
+        <int:service-activator ref="slideThumbnailsProcessor" method="selectItemRange"/>
+        <int:service-activator ref="slideThumbnailsProcessor" method="processRange"/>
+    </int:chain>
+
+    <int:channel id="slideThumbnailEnd"/>
+    <int:outbound-channel-adapter channel="slideThumbnailEnd">
+        <int-groovy:script><![CDATA[
+            slideThumbnailsProcessor.markRangeComplete(payload)
+            null
+        ]]></int-groovy:script>
+    </int:outbound-channel-adapter>
+
+    <!--**************************************************************-->
+
+    <!-- configure updatedSlideThumbnail migration -->
+
+    <int:inbound-channel-adapter id="updatedSlideThumbnailInputAdapter" channel="updatedSlideThumbnailSource"
+                                 auto-startup="${updatedSlideThumbnail.autostartup}">
+        <int:poller fixed-delay="${triggerFixedDelay}"/>
+        <int-groovy:script><![CDATA[
+            updatedSlideThumbnailsProcessor.requestNextRange()
+        ]]></int-groovy:script>
+    </int:inbound-channel-adapter>
+
+    <int:chain input-channel="updatedSlideThumbnailSource" output-channel="updatedSlideThumbnailEnd">
+        <int:service-activator ref="updatedSlideThumbnailsProcessor" method="selectItemRange"/>
+        <int:service-activator ref="updatedSlideThumbnailsProcessor" method="processRange"/>
+    </int:chain>
+
+    <int:channel id="updatedSlideThumbnailEnd"/>
+    <int:outbound-channel-adapter channel="updatedSlideThumbnailEnd">
+        <int-groovy:script><![CDATA[
+            updatedSlideThumbnailsProcessor.markRangeComplete(payload)
+            null
+        ]]></int-groovy:script>
+    </int:outbound-channel-adapter>
+
+    <!--**************************************************************-->
+
+</beans>

@@ -1,0 +1,71 @@
+subprojects {
+    apply plugin: 'java'
+    apply plugin: 'maven'
+
+    apply plugin: 'idea'
+    apply plugin: 'eclipse'
+
+    sourceCompatibility = 1.8
+    targetCompatibility = 1.8
+
+    compileJava.options.encoding = 'UTF-8'
+
+
+    uploadArchives {
+        repositories.mavenDeployer {
+            snapshotRepository( url: csConfig.mavenUploadSnapshotRepoUrl ) {
+                authentication( userName: csConfig.mavenUploadSnapshotRepoUsername,
+                        password: csConfig.mavenUploadSnapshotRepoPassword )
+            }
+            repository( url: csConfig.mavenUploadRepoUrl ) {
+                authentication( userName: csConfig.mavenUploadRepoUsername, password: csConfig.mavenUploadRepoPassword )
+            }
+        }
+    }
+
+
+
+    dependencies {
+        compileOnly "org.projectlombok:lombok:$lombokVersion"
+        annotationProcessor "org.projectlombok:lombok:$lombokVersion"
+
+        compile "javax.annotation:javax.annotation-api:1.3.2"
+
+        compile "org.apache.logging.log4j:log4j-api:$log4jVersion"
+        compile "org.apache.logging.log4j:log4j-core:$log4jVersion"
+
+        testCompile "junit:junit:4.12"
+        testCompile "org.springframework:spring-test:$springVersion"
+        // https://mvnrepository.com/artifact/org.eclipse.jetty/jetty-server
+        testCompile "org.eclipse.jetty:jetty-server:9.4.0.M0"
+        // https://mvnrepository.com/artifact/org.eclipse.jetty/jetty-servlets
+        testCompile "org.eclipse.jetty:jetty-servlet:9.4.0.M0"
+        // https://mvnrepository.com/artifact/org.mockito/mockito-all
+        testCompile 'org.mockito:mockito-core:2.3.0'
+
+    }
+
+    processResources {
+        filesMatching( '*.properties' ) {
+            filter { String line ->
+                csConfig.each {
+                    line = line.replaceAll( "\\\$\\{" + it.key + "\\}", it.value )
+                }
+                return line
+            }
+        }
+    }
+
+
+    processTestResources {
+        filesMatching( '*.properties' ) {
+            filter { String line ->
+                csConfig.each {
+                    line = line.replaceAll( "\\\$\\{" + it.key + "\\}", it.value )
+                }
+                return line
+            }
+        }
+    }
+
+}

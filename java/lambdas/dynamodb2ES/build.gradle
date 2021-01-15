@@ -1,0 +1,52 @@
+import org.pubanatomy.awsUtils.AddDynamoTriggerToLambda
+
+mainClassName = "com.customshow.lambda.Dynamo2Es"
+
+
+dependencies {
+
+    compile project( ':java_modules:java.config.per.client' )
+    compile project( ':java_modules:java.awsS3Upload' )
+    compile project( ':java_modules:java.awsS3Download' )
+    compile project( ':java_modules:java.aws.utils' )
+    compile project( ':java_modules:java.migration.utils' )
+    compile project( ':java_modules:java.videotranscoding' )
+
+}
+
+if( tasks.hasProperty( "migrateFunction" ) ){
+    task addDynaLambdaTriggers( type: AddDynamoTriggerToLambda ) {
+        awsRegion = csConfig.aws_region
+        lambdaFunctionName = csConfig.awsLambdaFunctionName
+        tableNameToSizeTypePosition = [
+                                       "$csConfig.awsS3UploadDynamoTablename"         : "",
+                                       "$csConfig.awsConfigPerClientDynamoTablename"  : "",
+                                       "$csConfig.awsTranscodingDynamoTablename"      : "",
+                                       "$csConfig.awsS3DownloadDynamoTablename"       : ""]
+    }
+
+    addDynaLambdaTriggers.dependsOn rootProject.project( ":java_modules" ).tasks.createDynaTables
+    addDynaLambdaTriggers.dependsOn migrateFunction
+
+    deployFunctionWithTriggers.dependsOn addDynaLambdaTriggers
+
+}
+
+ext.lambdaEnvNames.add( "urlCalledByEncodingCom" )
+ext.lambdaEnvNames.add( "userIdForEncodingCom" )
+ext.lambdaEnvNames.add( "userkeyForEncodingCom" )
+ext.lambdaEnvNames.add( "encodingComApiUrl" )
+ext.lambdaEnvNames.add( "encodingComApiTimeout" )
+ext.lambdaEnvNames.add( "awsTranscodingDynamoTablename" )
+ext.lambdaEnvNames.add( "awsS3UploadDynamoTablename" )
+ext.lambdaEnvNames.add( "awsLoginVerificationDynamoTablename" )
+ext.lambdaEnvNames.add( "awsS3UploadUrl" )
+ext.lambdaEnvNames.add( "awsS3UploadBucket" )
+ext.lambdaEnvNames.add( "awsS3DownloadBucket" )
+ext.lambdaEnvNames.add( "awsS3DownloadDynamoTablename" )
+ext.lambdaEnvNames.add( "awsConfigPerClientDynamoTablename" )
+ext.lambdaEnvNames.add( "awsS3IndexDynamoTablename" )
+ext.lambdaEnvNames.add( "awsMigrateResourceErrorsTableName" )
+ext.lambdaEnvNames.add( "backToUpdateStatusInMin" )
+ext.lambdaEnvNames.add( "dynamo2esElasticsearchUrl" )
+ext.lambdaEnvNames.add( "elasticsearchIndexNameFromDynamoDB" )

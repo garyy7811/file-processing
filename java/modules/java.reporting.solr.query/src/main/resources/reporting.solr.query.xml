@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:util="http://www.springframework.org/schema/util"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+        http://www.springframework.org/schema/beans/spring-beans.xsd
+        http://www.springframework.org/schema/util
+        http://www.springframework.org/schema/util/spring-util.xsd">
+    <bean id="httpSolrServer" class="org.apache.solr.client.solrj.impl.HttpSolrClient">
+        <constructor-arg type="java.lang.String" value="${solrSlideshowsessionUrl}"/>
+    </bean>
+    <bean id="cSReportingShowSessionStats" class="org.pubanatomy.reporting.solr.query.CSReportingShowSessionStats">
+        <constructor-arg ref="httpSolrServer"/>
+    </bean>
+    <bean id="cSReportingSlideViewStats" class="org.pubanatomy.reporting.solr.query.CSReportingSlideViewStats">
+        <constructor-arg ref="httpSolrServer"/>
+    </bean>
+    <bean id="activity" class="org.pubanatomy.solr.query.web.common.FacetQueryProperties">
+        <constructor-arg>
+            <bean class="org.pubanatomy.solr.query.common.FacetQuerySolr">
+                <constructor-arg ref="httpSolrServer"/>
+                <constructor-arg value="org.pubanatomy.reporting.solr.bean.CSReportingActivitySolr"/>
+            </bean>
+        </constructor-arg>
+    </bean>
+
+    <bean id="slideduration" class="org.pubanatomy.solr.query.web.common.FacetQueryProperties">
+        <constructor-arg>
+            <bean class="org.pubanatomy.solr.query.common.FacetQuerySolr">
+                <constructor-arg ref="httpSolrServer"/>
+                <constructor-arg value="org.pubanatomy.reporting.solr.bean.CSReportingSlideDurationSolr"/>
+            </bean>
+        </constructor-arg>
+    </bean>
+
+
+    <bean id="presduration" class="org.pubanatomy.solr.query.web.common.FacetQueryProperties">
+        <constructor-arg>
+            <bean class="org.pubanatomy.solr.query.common.FacetQuerySolr">
+                <constructor-arg ref="httpSolrServer"/>
+                <constructor-arg value="org.pubanatomy.reporting.solr.bean.CSReportingPresDurationSolr"/>
+            </bean>
+        </constructor-arg>
+    </bean>
+
+    <bean id="showduration" name="showduration" class="org.pubanatomy.solr.query.web.common.FacetQueryProperties">
+        <constructor-arg>
+            <bean class="org.pubanatomy.solr.query.common.FacetQuerySolr">
+                <constructor-arg ref="httpSolrServer"/>
+                <constructor-arg value="org.pubanatomy.reporting.solr.bean.CSReportingShowDurationSolr"/>
+            </bean>
+        </constructor-arg>
+    </bean>
+<!--
+
+    <util:map id="serviceMap">
+        <entry key="slideViewStats" value-ref="slideViewStats"/>
+        <entry key="showSessionStats" value-ref="showSessionStats"/>
+        <entry key="activity" value-ref="activity"/>
+        <entry key="slideduration" value-ref="slideduration"/>
+        <entry key="presduration" value-ref="presduration"/>
+        <entry key="showduration" value-ref="showduration"/>
+    </util:map>
+-->
+
+</beans>

@@ -1,0 +1,7 @@
+dependencies {
+
+//    compile "com.customshow:java.query.mysql:" + version
+//    compile "com.customshow:java.query.mysql.rpc:" + version
+    compile project( ':java_modules:java.query.mysql.rpc' )
+
+}

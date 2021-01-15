@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:int="http://www.springframework.org/schema/integration"
+
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+       http://www.springframework.org/schema/beans/spring-beans.xsd
+       http://www.springframework.org/schema/integration
+       http://www.springframework.org/schema/integration/spring-integration.xsd" default-lazy-init="true">
+
+    <int:splitter input-channel="onTranscodingStatusChanged" output-channel="onEachTranscodingStatusChange"/>
+
+    <int:channel id="onEachTranscodingStatusChange"/>
+    <int:outbound-channel-adapter channel="onEachTranscodingStatusChange" ref="mediaStatusChangedHandler"
+                                  method="onMediaStatusChanged"/>
+
+
+    <bean class="org.pubanatomy.awsS3Download.AwsS3DownloadDAO" id="awsS3DownloadFuncs">
+        <constructor-arg value="${awsS3DownloadDynamoTablename}"/>
+    </bean>
+
+    <bean class="org.pubanatomy.videotranscoding.OnTranscodeStatusChanged" id="mediaStatusChangedHandler">
+        <constructor-arg value="${resourceStatusQueueUrl}"/>
+        <constructor-arg value="${awsS3DownloadBucket}"/>
+    </bean>
+
+</beans>

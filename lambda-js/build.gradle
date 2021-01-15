@@ -1,0 +1,255 @@
+buildscript {
+    repositories {
+        mavenCentral()
+        jcenter()
+    }
+    dependencies {
+        classpath "com.amazonaws:aws-java-sdk:$awsSdkVersion"
+    }
+}
+
+
+import com.amazonaws.auth.DefaultAWSCredentialsProviderChain
+import com.amazonaws.regions.RegionUtils
+import com.amazonaws.regions.Regions
+import com.amazonaws.services.apigateway.AmazonApiGatewayClient
+import com.amazonaws.services.apigateway.model.CreateDeploymentRequest
+import com.amazonaws.services.apigateway.model.CreateDeploymentResult
+import com.amazonaws.services.apigateway.model.Op
+import com.amazonaws.services.apigateway.model.PatchOperation
+import com.amazonaws.services.apigateway.model.UpdateRestApiRequest
+import com.amazonaws.services.lambda.AWSLambdaClient
+import com.amazonaws.services.lambda.model.CreateFunctionRequest
+import com.amazonaws.services.lambda.model.Environment
+import com.amazonaws.services.lambda.model.FunctionCode
+import com.amazonaws.services.lambda.model.GetFunctionRequest
+import com.amazonaws.services.lambda.model.GetFunctionResult
+import com.amazonaws.services.lambda.model.InvokeRequest
+import com.amazonaws.services.lambda.model.UpdateFunctionCodeRequest
+import com.amazonaws.services.lambda.model.UpdateFunctionConfigurationRequest
+import com.amazonaws.services.lambda.model.VpcConfig
+import com.amazonaws.services.logs.AWSLogsClient
+import com.amazonaws.services.logs.model.DeleteSubscriptionFilterRequest
+import com.amazonaws.services.logs.model.PutSubscriptionFilterRequest
+import com.amazonaws.util.Base64
+import org.pubanatomy.awsUtils.AddApigatewayToLambda
+
+import java.nio.ByteBuffer
+import java.security.MessageDigest
+
+subprojects {
+
+    apply plugin: 'base'
+
+    project.ext.lambdaEnvNames = ['runtimeAwsAccessKeyId', 'runtimeAwsSecretAccessKey', 'aws_region'] as List
+
+    if( csConfig.awsLambdaHandler?.trim() && csConfig.awsLambdaRole?.trim() ){
+        logger.info "configuring lambda using aws.accesskeyId:" + System.getProperty( "aws.accessKeyId" );
+
+        /**
+         * extend clean to remove node_modules directory*/
+        clean.doLast {
+            file( "${project.projectDir}/src//node_modules" ).deleteDir()
+            println "removed ${project.projectDir}/src/node_modules/"
+        }
+
+        /**
+         * prepare development environment:
+         *  - install all node_modules, including dev-only modules
+         *  - prepare the env-variables.properties file for setting environment variables when local testing*/
+        task prepDev {
+            doLast {
+                def cmd = "${csConfig.npmPath} update -D"
+                def cmdLog = cmd.execute( null, project.file( 'src' ) ).text
+                println "${cmd} >>>>> ${cmdLog} <<<<<"
+
+                def testEnvPath = 'src/test/env-variables.properties'
+                def testEnvFile = project.file( testEnvPath )
+                testEnvFile.text = project.ext.lambdaEnvNames.collect {
+                    it + "=" + csConfig[ it ]
+                }.join( System.lineSeparator() )
+            }
+        }
+
+        /**
+         * prepare package for lambda upload:
+         *  - install all production node dependencies to handle case where node_modules is missing
+         *  - prune node_modules for production environment to avoid packaging aws-sdk or other dev-only modules
+         *  - zip entire src directory*/
+        task buildZip( type: Zip ) {
+
+            doFirst {
+                // first update npm packages
+                def cmd = "${csConfig.npmPath} update"
+                def cmdLog = cmd.execute( null, project.file( 'src' ) ).text
+                println "${cmd} >>>>> ${cmdLog} <<<<<"
+
+                // now prune for production use (removes dev-only packages)
+                def pruneCmd = "${csConfig.npmPath} prune --production"
+                def pruneCmdLog = pruneCmd.execute( null, project.file( 'src' ) ).text
+                println "${pruneCmd} >>>>> ${pruneCmdLog} <<<<<"
+            }
+
+            from project.fileTree( dir: 'src', exclude: 'test/**' )
+        }
+
+        task migrateFunction( dependsOn: buildZip ) {
+            doLast {
+                if( !csConfig.awsLambdaFunctionName?.trim() ){
+                    logger.warn( "awsLambdaFunctionName fallback to project name" )
+                    csConfig.awsLambdaFunctionName = project.name
+                }
+
+                if( !csConfig.awsLambdaRuntime?.trim() ){
+                    csConfig.awsLambdaRuntime = 'nodejs6.10'
+                }
+
+                def lambdaClient = new AWSLambdaClient( new DefaultAWSCredentialsProviderChain() )
+                lambdaClient.setRegion( RegionUtils.getRegion( csConfig.aws_region ) )
+
+
+                GetFunctionResult getFuncRslt = null
+
+                try{
+                    getFuncRslt = lambdaClient.
+                            getFunction( new GetFunctionRequest().withFunctionName( csConfig.awsLambdaFunctionName ) )
+                    def updateFuncConfigReq = new UpdateFunctionConfigurationRequest()
+                            .withFunctionName( csConfig.awsLambdaFunctionName )
+                            .withRuntime( csConfig.awsLambdaRuntime )
+                            .withRole( csConfig.awsLambdaRole )
+                            .withHandler( csConfig.awsLambdaHandler )
+                            .withDescription( csConfig.csVersionBuildRBStr + "  " + csConfig.csVersionBuildTime )
+                            .withTimeout( Integer.parseInt( csConfig.awsLambdaTimeout ) )
+                            .withMemorySize( Integer.parseInt( csConfig.awsLambdaMemSize ) )
+                            .withEnvironment( new Environment().withVariables( project.ext.lambdaEnvNames.collectEntries { [( it ): csConfig[ it ]] } ) )
+                    if( csConfig.awsLambdaSecurityGroupIds?.trim() && csConfig.awsLambdaSubnetIds?.trim() ){
+                        def vpcConfig = new VpcConfig().withSecurityGroupIds( csConfig.awsLambdaSecurityGroupIds.split( ',' ) ).
+                                withSubnetIds( csConfig.awsLambdaSubnetIds.split( ',' ) )
+                        updateFuncConfigReq.setVpcConfig( vpcConfig )
+                    }
+                    lambdaClient.updateFunctionConfiguration( updateFuncConfigReq )
+                    if( !Arrays.equals( Base64.encode( MessageDigest.getInstance( "SHA-256" ).digest( buildZip.archivePath.bytes ) ),
+                            getFuncRslt.configuration.codeSha256.bytes ) ){
+                        logger.info( "Function found, updating code" + getFuncRslt.configuration.codeSha256 )
+                        lambdaClient.updateFunctionCode( new UpdateFunctionCodeRequest().withFunctionName( csConfig.awsLambdaFunctionName ).
+                                withZipFile( ByteBuffer.wrap( buildZip.archivePath.bytes ) )
+                                .withPublish( true ) )
+                    }
+                }
+                catch( com.amazonaws.services.lambda.model.ResourceNotFoundException rnfx ){
+                    def createFuncReq = new CreateFunctionRequest()
+                            .withFunctionName( csConfig.awsLambdaFunctionName )
+                            .withRuntime( csConfig.awsLambdaRuntime )
+                            .withRole( csConfig.awsLambdaRole )
+                            .withHandler( csConfig.awsLambdaHandler )
+                            .withDescription( csConfig.csVersionBuildRBStr + "  " + csConfig.csVersionBuildTime )
+                            .withTimeout( Integer.parseInt( csConfig.awsLambdaTimeout ) )
+                            .withMemorySize( Integer.parseInt( csConfig.awsLambdaMemSize ) )
+                            .withEnvironment( new Environment().withVariables( project.ext.lambdaEnvNames.collectEntries { [( it ): csConfig[ it ]] } ) )
+                    if( csConfig.awsLambdaSecurityGroupIds?.trim() && csConfig.awsLambdaSubnetIds?.trim() ){
+                        def vpcConfig = new VpcConfig().withSecurityGroupIds( csConfig.awsLambdaSecurityGroupIds.split( ',' ) ).
+                                withSubnetIds( csConfig.awsLambdaSubnetIds.split( ',' ) )
+                        createFuncReq.setVpcConfig( vpcConfig )
+                    }
+                    createFuncReq.withCode( new FunctionCode().withZipFile( ByteBuffer.wrap( buildZip.archivePath.bytes ) ) ).withPublish( true )
+                    lambdaClient.createFunction( createFuncReq )
+                }
+
+                logger.info( "Function deployed: " + csConfig.awsLambdaFunctionName )
+            }
+        }
+
+        task deployFunctionWithTriggers {
+            doLast {
+
+                def lambdaClient = new AWSLambdaClient( new DefaultAWSCredentialsProviderChain() )
+                lambdaClient.setRegion( RegionUtils.getRegion( csConfig.aws_region ) )
+                lambdaClient.
+                        invoke( new InvokeRequest().withFunctionName( csConfig.awsLambdaFunctionName ).
+                                withPayload( "{}" ) )
+
+                AWSLogsClient logsClient = new AWSLogsClient( new DefaultAWSCredentialsProviderChain() )
+                logsClient.setRegion( RegionUtils.getRegion( csConfig.aws_region ) )
+                def logGroupName = "/aws/lambda/" + csConfig.awsLambdaFunctionName
+                if( csConfig.awsLambdaLoggingToKinesis == 'true' ){
+                    logsClient.
+                            putSubscriptionFilter( new PutSubscriptionFilterRequest().withLogGroupName( logGroupName ).
+                                    withFilterName( "NoFilter" ).withFilterPattern( "" ).
+                                    withDestinationArn( csConfig.loggingKinesisStreamArn ).
+                                    withRoleArn( csConfig.loggingKinesisRoleArn ) )
+                }
+                else{
+                    try{
+                        logsClient.deleteSubscriptionFilter( new DeleteSubscriptionFilterRequest().withLogGroupName( logGroupName ).
+                                withFilterName( "NoFilter" ) )
+                    }
+                    catch( e ){
+                        if( !( e instanceof com.amazonaws.services.logs.model.ResourceNotFoundException && e.statusCode == 400 ) ){
+                            throw e
+                        }
+                    }
+                }
+
+                logger.info( " done !!! " )
+            }
+        }
+
+
+        if( csConfig.awsLambdaApiId?.trim() && csConfig.awsLambdaApiResourceId?.trim() ){
+            task addApigateway( type: AddApigatewayToLambda ) {
+                awsRegion = csConfig.aws_region
+
+                lambdaFunctionName = csConfig.awsLambdaFunctionName
+
+                apiGatewayApiId = csConfig.awsLambdaApiId
+                apiGatewayResourceId = csConfig.awsLambdaApiResourceId
+                apiGatewayStagename = csConfig.awsLambdaApiStageName
+
+                if( csConfig.apiResHttpMethod != null ){
+                    resHttpMethod = csConfig.apiResHttpMethod
+                }
+                if( csConfig.integrationHttpMethod != null ){
+                    integrationHttpMethod = csConfig.integrationHttpMethod;
+                }
+            }
+            addApigateway.dependsOn migrateFunction
+            deployFunctionWithTriggers.dependsOn migrateFunction
+        }
+
+        artifacts {
+            archives buildZip
+        }
+
+        buildZip.dependsOn rootProject.
+                project( ":java_modules" ).tasks.createUploadBucketDistribution
+
+    }
+    else{
+        logger.info( "csConfig.awsLambdaHandler or csConfig.awsLambdaRole is null this is not a lambda build" )
+    }
+
+}
+
+task deployApiGatewayResPolicy {
+    doLast {
+        String policyTxt = file( "api-res-policy.template" ).text
+        String join = csConfig.zoomifierServerIPs.split( ',' ).join( '","' ) + '","' + csConfig.officeServerIPs.split( ',' ).join( '","' )
+        String zfServerIpArrStr = '["' + join + '"]'
+        policyTxt = policyTxt.replace( "&{zfServerIpArrStr}&", zfServerIpArrStr )
+        policyTxt = policyTxt.replace( "&{apiID}&", csConfig.awsLambdaApiId )
+        policyTxt = policyTxt.replace( "&{stageName}&", csConfig.awsLambdaApiStageName )
+        println policyTxt
+
+        def gatewayClient = new AmazonApiGatewayClient( new DefaultAWSCredentialsProviderChain() )
+        gatewayClient.updateRestApi( new UpdateRestApiRequest().withRestApiId( csConfig.awsLambdaApiId ).
+                withPatchOperations( new PatchOperation().withOp( Op.Replace ).withPath( '/policy' ).withValue( policyTxt ) ) )
+
+        CreateDeploymentResult apiDeplyRslt = gatewayClient.createDeployment( new CreateDeploymentRequest().withRestApiId( csConfig.awsLambdaApiId ).
+                withStageName( csConfig.awsLambdaApiStageName ) );
+        String awsRegion = csConfig.aws_region?.trim()
+        if( !awsRegion?.trim() ){
+            awsRegion = Regions.US_EAST_1.name
+        }
+        println "policy deployed to https://" + csConfig.awsLambdaApiId + ".execute-api." + awsRegion + ".amazonaws.com/" + csConfig.awsLambdaApiStageName
+    }
+}

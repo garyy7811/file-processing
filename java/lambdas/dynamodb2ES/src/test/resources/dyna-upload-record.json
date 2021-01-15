@@ -1,0 +1,191 @@
+{
+  "records": [
+    {
+      "eventID": "75d1ef4a4135f1975c6371f00e8dce56",
+      "eventName": "INSERT",
+      "eventVersion": "1.1",
+      "eventSource": "aws:dynamodb",
+      "awsRegion": "us-east-1",
+      "dynamodb": {
+        "approximateCreationDateTime": 1486418520000,
+        "keys": {
+          "s3BucketKey": {
+            "s": "1/1/3D4338426E101EB8FB8F97949293B264/1486418543375",
+            "n": null,
+            "b": null,
+            "m": null,
+            "l": null,
+            "ss": null,
+            "ns": null,
+            "bs": null,
+            "null": null,
+            "bool": null
+          }
+        },
+        "newImage": {
+          "fileRefType": {
+            "s": ".mp4",
+            "n": null,
+            "b": null,
+            "m": null,
+            "l": null,
+            "ss": null,
+            "ns": null,
+            "bs": null,
+            "null": null,
+            "bool": null
+          },
+          "clientId": {
+            "s": "1",
+            "n": null,
+            "b": null,
+            "m": null,
+            "l": null,
+            "ss": null,
+            "ns": null,
+            "bs": null,
+            "null": null,
+            "bool": null
+          },
+          "s3BucketKey": {
+            "s": "1/1/3D4338426E101EB8FB8F97949293B264/1486418543375",
+            "n": null,
+            "b": null,
+            "m": null,
+            "l": null,
+            "ss": null,
+            "ns": null,
+            "bs": null,
+            "null": null,
+            "bool": null
+          },
+          "fileRefModificationDate": {
+            "s": null,
+            "n": "1468268347249",
+            "b": null,
+            "m": null,
+            "l": null,
+            "ss": null,
+            "ns": null,
+            "bs": null,
+            "null": null,
+            "bool": null
+          },
+          "fileRefName": {
+            "s": "s3.mp4",
+            "n": null,
+            "b": null,
+            "m": null,
+            "l": null,
+            "ss": null,
+            "ns": null,
+            "bs": null,
+            "null": null,
+            "bool": null
+          },
+          "userId": {
+            "s": "1",
+            "n": null,
+            "b": null,
+            "m": null,
+            "l": null,
+            "ss": null,
+            "ns": null,
+            "bs": null,
+            "null": null,
+            "bool": null
+          },
+          "version": {
+            "s": null,
+            "n": "1",
+            "b": null,
+            "m": null,
+            "l": null,
+            "ss": null,
+            "ns": null,
+            "bs": null,
+            "null": null,
+            "bool": null
+          },
+          "s3Bucket": {
+            "s": "cs-cloud-dev-gary--upload",
+            "n": null,
+            "b": null,
+            "m": null,
+            "l": null,
+            "ss": null,
+            "ns": null,
+            "bs": null,
+            "null": null,
+            "bool": null
+          },
+          "fileRefSizeBytes": {
+            "s": null,
+            "n": "15396785",
+            "b": null,
+            "m": null,
+            "l": null,
+            "ss": null,
+            "ns": null,
+            "bs": null,
+            "null": null,
+            "bool": null
+          },
+          "awSAccessKeyId": {
+            "s": "aaabbbccc",
+            "n": null,
+            "b": null,
+            "m": null,
+            "l": null,
+            "ss": null,
+            "ns": null,
+            "bs": null,
+            "null": null,
+            "bool": null
+          },
+          "applyTimeStamp": {
+            "s": null,
+            "n": "1486418543375",
+            "b": null,
+            "m": null,
+            "l": null,
+            "ss": null,
+            "ns": null,
+            "bs": null,
+            "null": null,
+            "bool": null
+          },
+          "csSessionId": {
+            "s": "3D4338426E101EB8FB8F97949293B264",
+            "n": null,
+            "b": null,
+            "m": null,
+            "l": null,
+            "ss": null,
+            "ns": null,
+            "bs": null,
+            "null": null,
+            "bool": null
+          },
+          "fileRefCreationDate": {
+            "s": null,
+            "n": "1485451316521",
+            "b": null,
+            "m": null,
+            "l": null,
+            "ss": null,
+            "ns": null,
+            "bs": null,
+            "null": null,
+            "bool": null
+          }
+        },
+        "oldImage": null,
+        "sequenceNumber": "147251000000000005689390342",
+        "sizeBytes": 390,
+        "streamViewType": "NEW_AND_OLD_IMAGES"
+      },
+      "eventSourceARN": "arn:aws:dynamodb:us-east-1:726469603241:table/cs-cloud-dev-gary--upload/stream/2017-01-06T22:05:44.394"
+    }
+  ]
+}

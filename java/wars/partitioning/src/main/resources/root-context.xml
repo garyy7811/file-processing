@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:int="http://www.springframework.org/schema/integration"
+       xmlns:int-http="http://www.springframework.org/schema/integration/http"
+       xmlns:int-groovy="http://www.springframework.org/schema/integration/groovy"
+       xmlns:tx="http://www.springframework.org/schema/tx"
+       xmlns:utils="http://www.springframework.org/schema/util"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+            http://www.springframework.org/schema/beans/spring-beans.xsd
+            http://www.springframework.org/schema/context
+            http://www.springframework.org/schema/context/spring-context.xsd
+            http://www.springframework.org/schema/integration/http
+            http://www.springframework.org/schema/integration/http/spring-integration-http.xsd
+            http://www.springframework.org/schema/integration/groovy
+            http://www.springframework.org/schema/integration/groovy/spring-integration-groovy.xsd
+            http://www.springframework.org/schema/util
+            http://www.springframework.org/schema/util/spring-util.xsd
+            http://www.springframework.org/schema/tx
+            http://www.springframework.org/schema/tx/spring-tx.xsd">
+
+    <context:property-placeholder location="classpath:config.properties"/>
+
+    <context:annotation-config/>
+
+
+    <tx:annotation-driven transaction-manager="rangePartitioningHsqlTransactionManager"/>
+
+    <utils:map id="config">
+        <entry key="db0filepath" value="#{systemProperties['java.io.tmpdir']}/partitioning/hsql"/>
+        <entry key="db0user" value="sa"/>
+        <entry key="db0pass" value=""/>
+        <entry key="hsqlserverurl" value="#{'jdbc:hsqldb:hsql://127.0.0.1:9990/db0'}"/>
+    </utils:map>
+
+    <bean id="hsqlServer" class="org.pubanatomy.batchpartition.StartStopHsql">
+        <constructor-arg value="#{config.db0filepath}"/>
+        <constructor-arg value="#{config.hsqlserverurl}"/>
+    </bean>
+
+    <bean id="rangePartitioningHsqlDataSource" class="org.apache.commons.dbcp2.BasicDataSource" depends-on="hsqlServer"
+          destroy-method="close">
+        <property name="driverClassName" value="org.hsqldb.jdbc.JDBCDriver"/>
+        <property name="url" value="#{config.hsqlserverurl}"/>
+        <property name="username" value="#{config.db0user}"/>
+        <property name="password" value="#{config.db0pass}"/>
+    </bean>
+
+    <bean id="rangePartitioningHsqlTransactionManager"
+          class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+        <property name="dataSource" ref="rangePartitioningHsqlDataSource"/>
+    </bean>
+
+
+    <bean id="slideResourceContentPartitioning" class="org.pubanatomy.batchpartition.RangePartitionServiceImpl">
+        <constructor-arg>
+            <bean class="org.pubanatomy.batchpartition.RangePartitionService$Config">
+                <property name="tableName" value="slideResourceContentPartitioning"/>
+                <property name="rootFrom" value="${slideResource.startId}"/>
+                <property name="step" value="${slideResource.batchSize}"/>
+            </bean>
+        </constructor-arg>
+        <constructor-arg ref="rangePartitioningHsqlDataSource"/>
+        <constructor-arg value="${slideResource.reset}"/>
+        <constructor-arg value="true"/>
+    </bean>
+
+    <bean id="slideThumbnailPartitioning" class="org.pubanatomy.batchpartition.RangePartitionServiceImpl">
+        <constructor-arg>
+            <bean class="org.pubanatomy.batchpartition.RangePartitionService$Config">
+                <property name="tableName" value="slideThumbnailPartitioning"/>
+                <property name="rootFrom" value="${slideThumbnail.startId}"/>
+                <property name="step" value="${slideThumbnail.batchSize}"/>
+            </bean>
+        </constructor-arg>
+        <constructor-arg ref="rangePartitioningHsqlDataSource"/>
+        <constructor-arg value="${slideThumbnail.reset}"/>
+        <constructor-arg value="true"/>
+    </bean>
+
+    <bean id="statusManager" class="org.pubanatomy.migrationutils.JavaSimonStatusManagerImpl">
+    </bean>
+
+    <!--*****************************-->
+    <utils:map id="services">
+        <entry key="slideResourceContentPartitioning" value-ref="slideResourceContentPartitioning"/>
+        <entry key="slideThumbnailPartitioning" value-ref="slideThumbnailPartitioning"/>
+        <entry key="statusManager" value-ref="statusManager"/>
+    </utils:map>
+
+    <bean id="byteArrayHttpMessageConverter" class="org.springframework.http.converter.ByteArrayHttpMessageConverter"/>
+    <int-http:inbound-gateway request-channel="queryRangePartitionInputChannel"
+                              reply-channel="queryRangePartitionOutputChannel"
+                              supported-methods="POST"
+                              message-converters="byteArrayHttpMessageConverter"
+                              path="/{serviceName}/{methodName}"
+                              payload-expression="body">
+        <int-http:header name="methodName" expression="#pathVariables.methodName"/>
+        <int-http:header name="serviceName" expression="#pathVariables.serviceName"/>
+    </int-http:inbound-gateway>
+    <int:channel id="queryRangePartitionOutputChannel"/>
+    <int:chain input-channel="queryRangePartitionInputChannel" output-channel="queryRangePartitionOutputChannel">
+        <int:payload-deserializing-transformer/>
+        <int:service-activator requires-reply="true">
+            <int-groovy:script>
+                <![CDATA[
+                services.get( headers[ 'serviceName' ] )."${headers[ 'methodName' ]}"( *payload )
+                ]]>
+            </int-groovy:script>
+        </int:service-activator>
+        <int:payload-serializing-transformer/>
+        <int:header-enricher>
+            <int:header name="Content-Type" value="application/octet-stream"/>
+        </int:header-enricher>
+    </int:chain>
+
+</beans>

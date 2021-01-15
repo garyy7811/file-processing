@@ -1,0 +1,18 @@
+dependencies {
+
+    compile 'javax.servlet:jstl:1.2'
+    compile "org.springframework.integration:spring-integration-file:$springIntegrationVersion"
+
+    compile group: 'org.javasimon', name: 'javasimon-core', version: '4.1.0'
+    compile group: 'org.javasimon', name: 'javasimon-jdbc41', version: '4.1.0'
+    compile group: 'org.javasimon', name: 'javasimon-javaee', version: '4.1.0'
+    compile group: 'org.javasimon', name: 'javasimon-spring', version: '4.1.0'
+    compile group: 'org.javasimon', name: 'javasimon-console-embed', version: '4.1.0'
+
+    compile project( ':java_modules:java.query.mysql.rpc' )
+    compile project( ":java_modules:java.aws.utils" )
+
+    compile project( ':java_modules:java.batch.partition' )
+    compile project( ':java_modules:java.migration.utils' )
+
+}

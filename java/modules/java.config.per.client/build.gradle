@@ -1,0 +1,9 @@
+dependencies {
+    compile 'com.flashflexpro:simple-amf-all:0.0.1'
+    //    compile project( ':java_modules:java.aws.utils' )
+    compile project( ":java_modules:java.login.verify" )
+    compile project( ":java_modules:java.aws.utils" )
+    compile "org.springframework.data:spring-data-elasticsearch:2.0.6.RELEASE"
+    //    compile "com.amazonaws:aws-java-sdk:$awsSdkVersion"
+    //    compile "org.springframework.integration:spring-integration-event:$springIntegrationVersion"
+}

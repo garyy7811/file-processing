@@ -1,0 +1,62 @@
+buildscript {
+    repositories {
+        //mavenLocal()
+        maven {
+            name 'local nexus'
+            url csConfig.mavenDependencyRepoUrl
+        }
+    }
+    dependencies {
+    }
+}
+dependencies {
+
+    compile project( ":java_modules:java.aws.utils" )
+    compile project( ':java_modules:java.awsS3Upload' )
+    compile project( ':java_modules:java.awsS3Download' )
+    compile project( ':java_modules:java.videotranscoding' )
+    compile project( ':java_modules:java.reporting.solr.query' )
+//    compile project( ":java_modules:java.search.query" )
+
+    compile "org.springframework.integration:spring-integration-file:$springIntegrationVersion"
+
+}
+
+war {
+
+    //if debugging, :flash:swfs will copy all the swfs into servletApi's exploded
+    if( csConfig.csDebugInLocalExploded != 'true' ){
+
+
+        try{
+            project( ':flash:swfs' ).childProjects.each {
+                dependsOn it.value.tasks[ 'compileFlex' ]
+                String tn = it.key;
+                from( it.value.compileFlex ) {
+                    into tn
+                }
+            }
+        }
+        catch( e ){
+        }
+    }
+}
+
+processResources.dependsOn rootProject.project( ":java_modules" ).tasks.createUploadBucketDistribution
+processResources.dependsOn rootProject.project( ":java_modules" ).tasks.createBucketsDistribution
+
+
+test.dependsOn rootProject.project( ":java_modules" ).tasks.createDynaTablesForTests
+
+/*
+
+
+task integretionTest{
+doLast{}
+}
+
+def consoleAirTst = project( ':flash/airs:cloud.console.air:test' ).tasks.test
+
+consoleAirTst.dependsOn cargoRedeployRemote
+
+integretionTest.dependsOn consoleAirTst*/

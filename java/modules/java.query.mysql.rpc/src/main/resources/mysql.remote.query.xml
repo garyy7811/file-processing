@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:int="http://www.springframework.org/schema/integration"
+       xmlns:int-http="http://www.springframework.org/schema/integration/http"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+            http://www.springframework.org/schema/beans/spring-beans.xsd
+            http://www.springframework.org/schema/integration
+            http://www.springframework.org/schema/integration/spring-integration.xsd
+            http://www.springframework.org/schema/integration/http
+            http://www.springframework.org/schema/integration/http/spring-integration-http.xsd
+            http://www.springframework.org/schema/context
+            http://www.springframework.org/schema/context/spring-context.xsd">
+
+    <int:gateway id="queryMysql" service-interface="org.pubanatomy.labyrinth.mysql.QueryNewVictoryMysql"
+                 default-request-channel="queryMysqlThroughHttp" default-reply-channel="replyMysqlThroughHttp">
+        <int:default-header name="methodName" expression="#gatewayMethod.name"/>
+    </int:gateway>
+
+    <int:channel id="queryMysqlThroughHttp"/>
+    <int:channel id="replyMysqlThroughHttp"/>
+
+    <int:chain input-channel="queryMysqlThroughHttp" output-channel="replyMysqlThroughHttp">
+        <int:payload-serializing-transformer/>
+        <int:header-enricher>
+            <int:header name="Content-Type" value="application/octet-stream"/>
+        </int:header-enricher>
+        <int-http:outbound-gateway message-converters="queryMysqlByteArrayHttpMessageConverter"
+                                   url="${remoteMysqlWebserviceUrl}/java/{methodName}"
+                                   http-method="POST"
+                                   reply-timeout="${remoteMysqlWebserviceTimeout}"
+                                   expected-response-type="byte[]">
+            <int-http:uri-variable name="methodName" expression="headers.methodName"/>
+            <int-http:request-handler-advice-chain>
+                <int:retry-advice max-attempts="5"/>
+            </int-http:request-handler-advice-chain>
+        </int-http:outbound-gateway>
+        <int:payload-deserializing-transformer/>
+    </int:chain>
+    <bean id="queryMysqlByteArrayHttpMessageConverter"
+          class="org.springframework.http.converter.ByteArrayHttpMessageConverter"/>
+
+</beans>

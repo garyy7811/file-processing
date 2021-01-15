@@ -1,0 +1,51 @@
+apply plugin: 'jp.classmethod.aws.s3'
+
+buildscript {
+    repositories {
+        mavenCentral()
+        jcenter()
+    }
+
+    dependencies {
+        classpath "jp.classmethod.aws:gradle-aws-plugin:$jpClassmethodGradlePluginVersion"
+    }
+}
+
+
+task createDynaTables( type: CreateDynamoTableTask ) {
+    awsRegion = csConfig.aws_region
+    javaSourceProjects = [project( ':java_modules:java.migration.utils' )]
+
+    classToTableName4Capacities =
+            ["com.customshow.migrationutils.MigrationErrorRecord": csConfig.labyrinthErrorTrackTable + "|7|7|7|7"]
+    exitOnError = false
+}
+
+
+import jp.classmethod.aws.gradle.s3.CreateBucketTask
+import org.pubanatomy.awsUtils.CreateDynamoTableTask
+
+task createS3Buckets( type: CreateBucketTask ) {
+    if( csConfig.aws_region != 'us-east-1' ){
+        region csConfig.aws_region
+    }
+    bucketName csConfig.labyrinthS3bucket
+    ifNotExists true
+}
+
+dependencies {
+    compile 'javax.servlet:jstl:1.2'
+    compile "mysql:mysql-connector-java:5.1.34"
+
+    compile group: 'org.javasimon', name: 'javasimon-core', version: '4.1.0'
+    compile group: 'org.javasimon', name: 'javasimon-jdbc41', version: '4.1.0'
+    compile group: 'org.javasimon', name: 'javasimon-javaee', version: '4.1.0'
+    compile group: 'org.javasimon', name: 'javasimon-spring', version: '4.1.0'
+    compile group: 'org.javasimon', name: 'javasimon-console-embed', version: '4.1.0'
+
+
+    compile project( ':java_modules:java.query.mysql.rpc' )
+    compile project( ":java_modules:java.aws.utils" )
+    compile project( ":java_modules:java.batch.partition" )
+    compile project( ":java_modules:java.migration.utils" )
+}

@@ -1,0 +1,107 @@
+{
+  "records": [
+    {
+      "eventID": "fb58cad128be04ff533927a7905ec837",
+      "eventName": "INSERT",
+      "eventVersion": "1.1",
+      "eventSource": "aws:dynamodb",
+      "awsRegion": "us-east-1",
+      "dynamodb": {
+        "approximateCreationDateTime": 1486418520000,
+        "keys": {
+          "mediaId": {
+            "s": "98733798",
+            "n": null,
+            "b": null,
+            "m": null,
+            "l": null,
+            "ss": null,
+            "ns": null,
+            "bs": null,
+            "null": null,
+            "bool": null
+          }
+        },
+        "newImage": {
+          "uploadBucketKey": {
+            "s": "1/1/3D4338426E101EB8FB8F97949293B264/1486418543375",
+            "n": null,
+            "b": null,
+            "m": null,
+            "l": null,
+            "ss": null,
+            "ns": null,
+            "bs": null,
+            "null": null,
+            "bool": null
+          },
+          "createTime": {
+            "s": null,
+            "n": "1486418550454",
+            "b": null,
+            "m": null,
+            "l": null,
+            "ss": null,
+            "ns": null,
+            "bs": null,
+            "null": null,
+            "bool": null
+          },
+          "mediaId": {
+            "s": "98733798",
+            "n": null,
+            "b": null,
+            "m": null,
+            "l": null,
+            "ss": null,
+            "ns": null,
+            "bs": null,
+            "null": null,
+            "bool": null
+          },
+          "version": {
+            "s": null,
+            "n": "1",
+            "b": null,
+            "m": null,
+            "l": null,
+            "ss": null,
+            "ns": null,
+            "bs": null,
+            "null": null,
+            "bool": null
+          },
+          "lastUpdateTime": {
+            "s": null,
+            "n": "1486418550710",
+            "b": null,
+            "m": null,
+            "l": null,
+            "ss": null,
+            "ns": null,
+            "bs": null,
+            "null": null,
+            "bool": null
+          },
+          "status": {
+            "s": "New",
+            "n": null,
+            "b": null,
+            "m": null,
+            "l": null,
+            "ss": null,
+            "ns": null,
+            "bs": null,
+            "null": null,
+            "bool": null
+          }
+        },
+        "oldImage": null,
+        "sequenceNumber": "331928200000000000541787920",
+        "sizeBytes": 153,
+        "streamViewType": "NEW_AND_OLD_IMAGES"
+      },
+      "eventSourceARN": "arn:aws:dynamodb:us-east-1:726469603241:table/cs-cloud-dev-gary--transcoding/stream/2016-11-30T21:19:38.243"
+    }
+  ]
+}

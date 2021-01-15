@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:int="http://www.springframework.org/schema/integration"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+            http://www.springframework.org/schema/beans/spring-beans.xsd
+            http://www.springframework.org/schema/integration
+            http://www.springframework.org/schema/integration/spring-integration.xsd" default-lazy-init="true">
+
+    <int:channel id="inputUploadFileForImgFla"/>
+    <int:channel id="outputUploadFileForImgFla"/>
+
+    <!--Images will be processed by processImgFlaService triggered by client directly-->
+    <int:router input-channel="inputUploadFileForImgFla" expression="payload.fileRefType.toLowerCase()"
+                default-output-channel="nullChannel" resolution-required="false">
+        <int:mapping value=".swf" channel="inputUploadFileForFla"/>
+    </int:router>
+
+    <int:service-activator input-channel="inputUploadFileForImg" output-channel="outputUploadFileForImgFla"
+                           method="onUploadImgConfirmed" ref="processImgFla"/>
+
+    <int:service-activator input-channel="inputUploadFileForFla" output-channel="outputUploadFileForImgFla"
+                           method="onUploadFlaConfirmed" ref="processImgFla">
+        <int:request-handler-advice-chain>
+            <int:retry-advice max-attempts="3"/>
+        </int:request-handler-advice-chain>
+    </int:service-activator>
+
+    <bean class="org.pubanatomy.processImgFla.ProcessImgFlaService" id="processImgFlaService"/>
+
+    <bean class="org.pubanatomy.processImgFla.ProcessImg" id="processImgFla">
+        <constructor-arg value="${awsS3UploadBucket}"/>
+        <constructor-arg value="${awsS3DownloadBucket}"/>
+        <constructor-arg value="${resourceStatusQueueUrl}"/>
+        <constructor-arg value="${uploadImgThumbMaxSize}"/>
+    </bean>
+
+</beans>

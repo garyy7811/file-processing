@@ -1,0 +1,12 @@
+dependencies {
+    compile project( ":java_modules:java.aws.utils" )
+    compile project( ":java_modules:java.config.per.client" )
+    compile "org.springframework.integration:spring-integration-http:$springIntegrationVersion"
+
+    // https://mvnrepository.com/artifact/net.java.dev.jets3t/jets3t
+//    compile group: 'net.java.dev.jets3t', name: 'jets3t', version: '0.9.4'
+    // https://mvnrepository.com/artifact/org.bouncycastle/bcprov-jdk15on
+    compile group: 'org.bouncycastle', name: 'bcprov-jdk15on', version: '1.54'
+
+
+}

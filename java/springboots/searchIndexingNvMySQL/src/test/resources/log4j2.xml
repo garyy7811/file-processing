@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="DEBUG" packages="com.customshow.awsutils">
+    <Appenders>
+        <Console name="CONSOLE" target="SYSTEM_OUT">
+            <PatternLayout pattern="%d{HH:mm:ss,SSS} %t %c.%M(%L)[%level{lowerCase=true}]: %m%n"/>
+        </Console>
+    </Appenders>
+    <Loggers>
+        <Logger additivity="false" name="org.springframework" level="info">
+            <AppenderRef ref="CONSOLE"/>
+        </Logger>
+        <Logger additivity="false" name="org.elasticsearch.client.RestClient" level="error">
+            <AppenderRef ref="CONSOLE"/>
+        </Logger>
+        <Logger additivity="false" name="org.springframework.integration" level="info">
+            <AppenderRef ref="CONSOLE"/>
+        </Logger>
+        <Logger additivity="false" name="com.amazonaws" level="info">
+            <AppenderRef ref="CONSOLE"/>
+        </Logger>
+        <Logger additivity="false" name="com.customshow" level="info">
+            <AppenderRef ref="CONSOLE"/>
+        </Logger>
+        <Root additivity="false" level="warn">
+            <AppenderRef ref="CONSOLE"/>
+        </Root>
+    </Loggers>
+</Configuration>

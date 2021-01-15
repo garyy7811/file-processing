@@ -1,0 +1,15 @@
+dependencies {
+    // https://mvnrepository.com/artifact/org.apache.httpcomponents/httpclient
+    compile group: 'org.apache.httpcomponents', name: 'httpclient', version: '4.5.3'
+
+}
+
+
+ext.lambdaEnvNames.add( "httpHostname" )
+ext.lambdaEnvNames.add( "httpHostPort" )
+ext.lambdaEnvNames.add( "httpClientBufferSize" )
+ext.lambdaEnvNames.add( "httpServerPath" )
+
+configurations {
+    compile.exclude module: "aws-lambda-java-events"
+}

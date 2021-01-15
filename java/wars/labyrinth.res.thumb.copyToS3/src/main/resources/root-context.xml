@@ -1,0 +1,188 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:int="http://www.springframework.org/schema/integration"
+       xmlns:int-groovy="http://www.springframework.org/schema/integration/groovy"
+       xmlns:utils="http://www.springframework.org/schema/util" xmlns:tx="http://www.springframework.org/schema/tx"
+       xmlns:task="http://www.springframework.org/schema/task"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+       http://www.springframework.org/schema/beans/spring-beans.xsd
+       http://www.springframework.org/schema/context
+       http://www.springframework.org/schema/context/spring-context.xsd
+       http://www.springframework.org/schema/integration
+       http://www.springframework.org/schema/integration/spring-integration.xsd
+       http://www.springframework.org/schema/integration/groovy
+       http://www.springframework.org/schema/integration/groovy/spring-integration-groovy.xsd http://www.springframework.org/schema/util http://www.springframework.org/schema/util/spring-util.xsd http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx.xsd http://www.springframework.org/schema/task http://www.springframework.org/schema/task/spring-task.xsd">
+
+    <context:property-placeholder location="classpath:config.properties"/>
+
+    <context:annotation-config/>
+
+    <bean id="nvJdbcTemplate" name="newVictoryMySQL" class="org.springframework.jdbc.core.JdbcTemplate">
+        <property name="dataSource">
+            <bean class="org.apache.commons.dbcp2.BasicDataSource" destroy-method="close">
+                <property name="driverClassName" value="com.mysql.jdbc.Driver"/>
+                <property name="url" value="${nvJdbcUrl}"/>
+                <property name="username" value="${nvJdbcUser}"/>
+                <property name="password" value="${nvJdbcPassword}"/>
+            </bean>
+        </property>
+    </bean>
+
+    <bean id="cpResToS3" class="org.pubanatomy.copyResAndThumbToS3.CpResAndThumbToS3">
+        <constructor-arg value="${limelightThumbnailContext}"/>
+        <constructor-arg value="${limelightPosterFrameContext}"/>
+        <constructor-arg value="${limelightFlashContext}"/>
+        <constructor-arg value="${limelightImageContext}"/>
+        <constructor-arg value="${limelightVideoContext}"/>
+        <constructor-arg value="${limelightEnvDirectory}"/>
+        <constructor-arg value="${limelightUnsecurePath}"/>
+        <constructor-arg value="${limelightSecurePath}"/>
+        <constructor-arg value="${limelightMediaVaultSecret}"/>
+        <constructor-arg value="${limelightHttpUrlBase}"/>
+        <constructor-arg value="${limelightMultibitratePath}"/>
+        <constructor-arg value="${labyrinthWebCacheRoot}"/>
+        <constructor-arg value="${labyrinthImageCache}"/>
+        <constructor-arg value="${labyrinthFlashCache}"/>
+        <constructor-arg value="${labyrinthVideoCache}"/>
+        <constructor-arg value="${labyrinthThumbnailCache}"/>
+        <constructor-arg value="${labyrinthPosterFrameCache}"/>
+        <constructor-arg value="${labyrinthS3bucket}"/>
+    </bean>
+
+
+    <bean id="basicAWSCredentials" class="com.amazonaws.auth.BasicAWSCredentials">
+        <constructor-arg value="${runtimeAwsAccessKeyId}"/>
+        <constructor-arg value="${runtimeAwsSecretAccessKey}"/>
+    </bean>
+    <bean id="staticCredentialsProvider" class="com.amazonaws.auth.AWSStaticCredentialsProvider">
+        <constructor-arg ref="basicAWSCredentials"/>
+    </bean>
+    <bean id="s3Client" class="com.amazonaws.services.s3.AmazonS3Client">
+        <constructor-arg ref="basicAWSCredentials"/>
+        <constructor-arg>
+            <bean class="com.amazonaws.ClientConfiguration">
+                <property name="signerOverride" value="S3SignerType"/>
+            </bean>
+        </constructor-arg>
+    </bean>
+    <bean id="dynamoDBClient" class="com.amazonaws.services.dynamodbv2.AmazonDynamoDBClient">
+        <constructor-arg ref="basicAWSCredentials"/>
+    </bean>
+    <!--********************************************************************************-->
+
+    <context:annotation-config/>
+    <tx:annotation-driven transaction-manager="rangePartitioningHsqlTransactionManager"/>
+
+    <utils:map id="config">
+        <entry key="db0filepath" value="#{systemProperties['java.io.tmpdir']}/labyrinth.copy.to.s3/hsql"/>
+        <entry key="db0user" value="sa"/>
+        <entry key="db0pass" value=""/>
+        <entry key="hsqlserverurl" value="#{'jdbc:hsqldb:hsql://127.0.0.1:9988/db0'}"/>
+    </utils:map>
+
+    <bean id="hsqlServer" class="org.pubanatomy.batchpartition.StartStopHsql">
+        <constructor-arg value="#{config.db0filepath}"/>
+        <constructor-arg value="#{config.hsqlserverurl}"/>
+    </bean>
+
+    <bean id="rangePartitioningHsqlDataSource" class="org.apache.commons.dbcp2.BasicDataSource" depends-on="hsqlServer"
+          destroy-method="close">
+        <property name="driverClassName" value="org.hsqldb.jdbc.JDBCDriver"/>
+        <property name="url" value="#{config.hsqlserverurl}"/>
+        <property name="username" value="#{config.db0user}"/>
+        <property name="password" value="#{config.db0pass}"/>
+    </bean>
+
+    <bean id="rangePartitioningHsqlTransactionManager"
+          class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+        <property name="dataSource" ref="rangePartitioningHsqlDataSource"/>
+    </bean>
+
+
+    <bean id="resPartitioning" class="org.pubanatomy.batchpartition.RangePartitionServiceImpl">
+        <constructor-arg value="resPartitioning"/>
+        <constructor-arg ref="rangePartitioningHsqlDataSource"/>
+        <constructor-arg value="false"/>
+        <constructor-arg value="true"/>
+        <property name="step" value="50"/>
+        <property name="rootFrom" value="0"/>
+    </bean>
+    <bean id="thumbPartitioning" class="org.pubanatomy.batchpartition.RangePartitionServiceImpl">
+        <constructor-arg value="thumbPartitioning"/>
+        <constructor-arg ref="rangePartitioningHsqlDataSource"/>
+        <constructor-arg value="false"/>
+        <constructor-arg value="true"/>
+        <property name="step" value="200"/>
+        <property name="rootFrom" value="0"/>
+    </bean>
+
+    <!--********************************************************************-->
+    <task:executor id="resExecutor" pool-size="${copy.resource.thread.pool.size}"/>
+    <int:inbound-channel-adapter channel="filterNullIn">
+        <int:poller fixed-delay="${triggerFixedDelay}" max-messages-per-poll="3"/>
+        <int-groovy:script><![CDATA[
+            if( resPartitioning.countWorking() > 10 ){
+                return null;
+            }
+            Long maxResId = cpResToS3.loadResMax()
+            resPartitioning.rootTo = maxResId
+            resPartitioning.allocateRange( )
+        ]]></int-groovy:script>
+    </int:inbound-channel-adapter>
+
+    <int:filter expression="payload!=null" input-channel="filterNullIn" output-channel="resourceSource"/>
+
+    <int:channel id="resourceSource">
+        <int:dispatcher task-executor="resExecutor"/>
+    </int:channel>
+
+    <int:chain input-channel="resourceSource" output-channel="resourceEnd">
+        <int:service-activator ref="cpResToS3" method="selectResRange"/>
+        <int:service-activator ref="cpResToS3" method="processEachResRange"/>
+    </int:chain>
+
+    <int:channel id="resourceEnd"/>
+    <int:outbound-channel-adapter channel="resourceEnd">
+        <int-groovy:script><![CDATA[
+            resPartitioning.doneRange( payload[ 0 ], payload[ 1 ], '.' )
+            null
+        ]]></int-groovy:script>
+    </int:outbound-channel-adapter>
+
+    <!--********************************************************************************-->
+
+    <task:executor id="thumbExecutor" pool-size="${copy.thumbnail.thread.pool.size}"/>
+    <int:inbound-channel-adapter channel="filterNullThumbIn">
+        <int:poller fixed-delay="${triggerFixedDelay}" max-messages-per-poll="3"/>
+        <int-groovy:script><![CDATA[
+            if( thumbPartitioning.countWorking() > 10 ){
+                return null;
+            }
+            Long maxResId = cpResToS3.loadThumbMax()
+            thumbPartitioning.rootTo = maxResId
+            thumbPartitioning.allocateRange( )
+        ]]></int-groovy:script>
+    </int:inbound-channel-adapter>
+
+    <int:filter expression="payload!=null" input-channel="filterNullThumbIn" output-channel="thumbSource"/>
+
+    <int:channel id="thumbSource">
+        <int:dispatcher task-executor="thumbExecutor"/>
+    </int:channel>
+
+    <int:chain input-channel="thumbSource" output-channel="thumbEnd">
+        <int:service-activator ref="cpResToS3" method="selectSlideThumbRange"/>
+        <int:service-activator ref="cpResToS3" method="processEachThumbRange"/>
+    </int:chain>
+
+    <int:channel id="thumbEnd"/>
+    <int:outbound-channel-adapter channel="thumbEnd">
+        <int-groovy:script><![CDATA[
+            thumbPartitioning.doneRange( payload[ 0 ], payload[ 1 ], '.' )
+            null
+        ]]></int-groovy:script>
+    </int:outbound-channel-adapter>
+
+</beans>

@@ -1,0 +1,13 @@
+{
+  "query": {
+    "source": "https://cs-cloud-trunk--upload.s3.amazonaws.com/0/1/ED7953FD2B00A07A46B8E650244077CC/1481221664072?x-amz-security-token=FQoDYXdzEDQaDNdEkoO3QEeqKpLJRCKLAuJc55AasHunCkOTd4I36PfKEvnQrsX4BK7vnfBuqr6dJkxWM6GWtoXDHjRe1vbOTuMNNElN%2BgktR3dVHJbYdzd73Qjp2PZgUmHJ1lKCGc45PDL%2Bx5vQJpDOuNnkB2GbNwBPZIsngQA3vLGWGyiq8sZ20aHJZjfY%2FjD%2ByHRczsvmR9qF5jbTuUIEuUN7xCsZ71Cv%2ByV1tOjyCybmjNpyz%2B72RC9c%2BRSbGVUVMbX8%2Boghck1GTWihWCylwhDKxxSg%2Bh0TeB%2F2ejf2Uwttzup4ejcpt%2FBa7RuSgSKidl3WsOg4H3gRHfnGoZ7MhML%2BM%2BzMWctNdv8TEv5rBVEY1sufEjNz0KA0Tf%2FUPAceaSihzKbCBQ%3D%3D&AWSAccessKeyId=ASIAJUZSBMIREXSSVYVA&Expires=1481228912&Signature=ktADcvUHgdFrCzuwV0vKWqoJT%2BI%3D",
+    "userid": "85296",
+    "userkey": "20d39e44aacf122ead3cba26a830c17f",
+    "action": "AddMediaBenchmark",
+
+    "notify_format": "json",
+    "notify": "https://hr7fu0poyf.execute-api.us-east-1.amazonaws.com/a/encoding-com/-dummy-",
+    "notify_upload": "https://hr7fu0poyf.execute-api.us-east-1.amazonaws.com/a/encoding-com/-dummy-",
+    "notify_encoding_errors": "https://hr7fu0poyf.execute-api.us-east-1.amazonaws.com/a/encoding-com/-dummy-"
+  }
+}

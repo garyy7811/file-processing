@@ -1,0 +1,38 @@
+import org.pubanatomy.awsUtils.AddS3TriggerToLambda
+
+mainClassName = "com.customshow.lambda.MarkOnFileUploadedToS3"
+
+dependencies {
+    compile project( ':java_modules:java.awsS3Upload' )
+}
+
+
+configurations {
+    compile.exclude module: "elasticsearch"
+}
+
+
+if( tasks.hasProperty( "migrateFunction" ) ){
+    /*
+    * example usage
+    * s3bucketname2Event is a map, bucketname is the key,
+    * value can be empty string which means add all events as triggers or event names separated by "|"
+    *
+    * 's3:ObjectCreated:*|s3:ObjectRemoved:*'
+    *
+    * */
+    task addS3LambdaTriggers( type: AddS3TriggerToLambda ) {
+        awsRegion = csConfig.aws_region
+        lambdaFunctionName = csConfig.awsLambdaFunctionName
+        s3bucketname2Event = ["$csConfig.awsS3UploadBucket": "" ]
+    }
+    addS3LambdaTriggers.dependsOn rootProject.project( ":java_modules" ).tasks.createS3Buckets
+    addS3LambdaTriggers.dependsOn migrateFunction
+
+    deployFunctionWithTriggers.dependsOn addS3LambdaTriggers
+
+}
+
+
+ext.lambdaEnvNames.add( "awsS3UploadDynamoTablename" )
+ext.lambdaEnvNames.add( "backToUpdateStatusInMin" )

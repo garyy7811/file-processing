@@ -1,0 +1,88 @@
+dependencies {
+    compile project( ':java_modules:java.aws.utils' )
+}
+
+configurations {
+
+    compile.exclude module: "elasticsearch"
+
+    compile.exclude group: "org.springframework"
+    compile.exclude group: "org.springframework.data"
+    compile.exclude group: "org.springframework.integration"
+
+    compile.exclude group: "javax.persistence"
+    compile.exclude group: "javax.validation"
+
+    compile.exclude group: "org.hibernate"
+    compile.exclude group: "org.hibernate.javax.persistence"
+    compile.exclude group: "javax.el"
+    compile.exclude group: "org.glassfish.web"
+
+    compile.exclude module: "aws-java-sdk-support"
+    compile.exclude module: "aws-java-sdk-simpledb"
+    compile.exclude module: "aws-java-sdk-simpleworkflow"
+    compile.exclude module: "aws-java-sdk-storagegateway"
+    compile.exclude module: "aws-java-sdk-route53"
+//    compile.exclude module: "aws-java-sdk-s3"
+    compile.exclude module: "aws-java-sdk-importexport"
+    compile.exclude module: "aws-java-sdk-sts"
+    compile.exclude module: "aws-java-sdk-sqs"
+    compile.exclude module: "aws-java-sdk-rds"
+    compile.exclude module: "aws-java-sdk-redshift"
+    compile.exclude module: "aws-java-sdk-elasticbeanstalk"
+    compile.exclude module: "aws-java-sdk-glacier"
+    compile.exclude module: "aws-java-sdk-iam"
+    compile.exclude module: "aws-java-sdk-datapipeline"
+    compile.exclude module: "aws-java-sdk-elasticloadbalancing"
+    compile.exclude module: "aws-java-sdk-emr"
+    compile.exclude module: "aws-java-sdk-elasticache"
+    compile.exclude module: "aws-java-sdk-elastictranscoder"
+    compile.exclude module: "aws-java-sdk-ec2"
+//    compile.exclude module: "aws-java-sdk-dynamodb"
+    compile.exclude module: "aws-java-sdk-sns"
+    compile.exclude module: "aws-java-sdk-cloudtrail"
+    compile.exclude module: "aws-java-sdk-cloudwatch"
+//    compile.exclude module: "aws-java-sdk-logs"
+    compile.exclude module: "aws-java-sdk-events"
+    compile.exclude module: "aws-java-sdk-cognitoidentity"
+    compile.exclude module: "aws-java-sdk-cognitosync"
+    compile.exclude module: "aws-java-sdk-directconnect"
+    compile.exclude module: "aws-java-sdk-cloudformation"
+    compile.exclude module: "aws-java-sdk-cloudfront"
+    compile.exclude module: "aws-java-sdk-kinesis"
+    compile.exclude module: "aws-java-sdk-opsworks"
+    compile.exclude module: "aws-java-sdk-ses"
+    compile.exclude module: "aws-java-sdk-autoscaling"
+    compile.exclude module: "aws-java-sdk-cloudsearch"
+    compile.exclude module: "aws-java-sdk-cloudwatchmetrics"
+    compile.exclude module: "aws-java-sdk-swf-libraries"
+    compile.exclude module: "aws-java-sdk-codedeploy"
+    compile.exclude module: "aws-java-sdk-codepipeline"
+    compile.exclude module: "aws-java-sdk-kms"
+    compile.exclude module: "aws-java-sdk-config"
+//    compile.exclude module: "aws-java-sdk-lambda"
+    compile.exclude module: "aws-java-sdk-ecs"
+    compile.exclude module: "aws-java-sdk-ecr"
+    compile.exclude module: "aws-java-sdk-cloudhsm"
+    compile.exclude module: "aws-java-sdk-ssm"
+    compile.exclude module: "aws-java-sdk-workspaces"
+    compile.exclude module: "aws-java-sdk-machinelearning"
+    compile.exclude module: "aws-java-sdk-directory"
+    compile.exclude module: "aws-java-sdk-efs"
+    compile.exclude module: "aws-java-sdk-codecommit"
+    compile.exclude module: "aws-java-sdk-devicefarm"
+    compile.exclude module: "aws-java-sdk-elasticsearch"
+    compile.exclude module: "aws-java-sdk-waf"
+    compile.exclude module: "aws-java-sdk-marketplacecommerceanalytics"
+    compile.exclude module: "aws-java-sdk-inspector"
+    compile.exclude module: "aws-java-sdk-iot"
+    compile.exclude module: "aws-java-sdk-api-gateway"
+    compile.exclude module: "aws-java-sdk-acm"
+    compile.exclude module: "aws-java-sdk-gamelift"
+//    compile.exclude module: "aws-java-sdk-core"
+
+
+
+
+}
+ext.lambdaEnvNames.add( "indexS3Bucket.ddb.table" )

@@ -1,0 +1,22 @@
+
+
+
+ext.lambdaEnvNames.add( "urlCalledByEncodingCom" )
+ext.lambdaEnvNames.add( "userIdForEncodingCom" )
+ext.lambdaEnvNames.add( "userkeyForEncodingCom" )
+ext.lambdaEnvNames.add( "encodingComApiUrl" )
+ext.lambdaEnvNames.add( "encodingComApiTimeout" )
+ext.lambdaEnvNames.add( "awsTranscodingDynamoTablename" )
+ext.lambdaEnvNames.add( "awsS3UploadDynamoTablename" )
+ext.lambdaEnvNames.add( "awsS3DownloadBucket" )
+ext.lambdaEnvNames.add( "awsS3DownloadDynamoTablename" )
+ext.lambdaEnvNames.add( "awsConfigPerClientDynamoTablename" )
+ext.lambdaEnvNames.add( "backToUpdateStatusInMin" )
+ext.lambdaEnvNames.add( "resourceStatusQueueUrl" )
+ext.lambdaEnvNames.add( "awsS3DownloadBucketAccessKeyAndEncodedSecret" )
+ext.lambdaEnvNames.add( "rootUserId" )
+ext.lambdaEnvNames.add( "awsS3UploadBucket" )
+ext.lambdaEnvNames.add( "awsS3UploadUrl" )
+ext.lambdaEnvNames.add( "awsLoginVerificationDynamoTablename" )
+ext.lambdaEnvNames.add( "uploadImgThumbMaxSize" )
+ext.lambdaEnvNames.add( "awsS3DownloadUrl" )

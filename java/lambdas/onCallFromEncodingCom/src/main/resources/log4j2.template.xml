@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="DEBUG" packages="com.customshow.awsutils">
+    <Appenders>
+        <Log4j2LambdaAppender name="Log4j2LambdaAppender">
+            <PatternLayout pattern="%d{yyyy-MM-dd HH:mm:ss,SSS Z} (%X{AWSRequestId}) %t %c.%M:%L %level %m%n"/>
+        </Log4j2LambdaAppender>
+    </Appenders>
+    <Loggers>
+        <Logger additivity="false" name="org.springframework" level="${loggerSpringLevel}">
+            <AppenderRef ref="Log4j2LambdaAppender"/>
+        </Logger>
+        <Logger additivity="false" name="org.springframework.integration" level="${loggerSpringIntegrationLevel}">
+            <AppenderRef ref="Log4j2LambdaAppender"/>
+        </Logger>
+        <Logger additivity="false" name="com.amazonaws" level="${loggerAwsLevel}">
+            <AppenderRef ref="Log4j2LambdaAppender"/>
+        </Logger>
+        <Logger additivity="false" name="com.customshow" level="${loggerCustomShowLevel}">
+            <AppenderRef ref="Log4j2LambdaAppender"/>
+        </Logger>
+        <Root level="${loggerRootLevel}">
+            <AppenderRef ref="Log4j2LambdaAppender"/>
+        </Root>
+    </Loggers>
+</Configuration>

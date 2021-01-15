@@ -1,0 +1,37 @@
+import org.pubanatomy.awsUtils.CreateEcsTaskDefinition
+import org.pubanatomy.awsUtils.StartEcsService
+
+
+//-v /customshow/nexus-data:/nexus-data sonatype/nexus3
+task createNexusTaskDef( type: CreateEcsTaskDefinition ) {
+    taskDefName = "cs-common-utils--Nexus3"
+
+    awsS3ConfigBucket = csConfig.awsS3ConfigBucket
+    domainName = 'localhost'
+    awsLogsGroup = "cs-common-utils"
+    increaseRevisionOnExist = false
+    awsLogsStreamPrefix = "/ecs/task/" + taskDefName
+
+
+    containerList = [
+
+            CreateEcsTaskDefinition.ContainerModel.
+                    newInstance( [image        : "sonatype/nexus3",
+                                  portMappings : [8081: 8081, 8082: 8082, 8083: 8083],
+                                  mountMappings: ["/efs/nexus3/nexus-data": "/nexus-data"]] )
+
+
+    ]
+}
+
+task startNexusEcsService( type: StartEcsService,
+        dependsOn: [createNexusTaskDef, parent.tasks.createEcsAutoScaleLaunchConfig] ) {
+    doFirst {
+        taskDefName = createNexusTaskDef.taskDefName
+        taskDefinitionArn = createNexusTaskDef.taskDefinitionArn
+    }
+    ecsClusterName = "cs-common-utils"
+}
+
+
+apply from: 'tmpTst.gradle'

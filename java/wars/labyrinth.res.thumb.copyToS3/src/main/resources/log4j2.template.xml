@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="DEBUG">
+    <Appenders>
+        <Console name="CONSOLE" target="SYSTEM_OUT">
+            <PatternLayout pattern="∈∈∈[${logName}] [${cs_config}] [%t] [%d{yyyy-MM-dd HH:mm:ss,SSS Z}] [%c.%M(%F:%L)] [%level{lowerCase=true}] %replace{%m}{(\r|\n)}{⊃}∋∋∋%n" alwaysWriteExceptions="true"/>
+        </Console>
+    </Appenders>
+    <Loggers>
+        <Root level="${loggerRootLevel}">
+            <AppenderRef ref="CONOSLE"/>
+        </Root>
+    </Loggers>
+</Configuration>

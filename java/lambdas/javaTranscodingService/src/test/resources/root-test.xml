@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:int="http://www.springframework.org/schema/integration"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+            http://www.springframework.org/schema/beans/spring-beans.xsd
+            http://www.springframework.org/schema/context
+            http://www.springframework.org/schema/context/spring-context.xsd
+            http://www.springframework.org/schema/integration
+            http://www.springframework.org/schema/integration/spring-integration.xsd">
+
+    <context:property-placeholder location="test-config.properties"/>
+
+    <context:annotation-config/>
+
+    <import resource="transcoding.xml"/>
+    <import resource="config.per.client.service.xml"/>
+    <import resource="awsS3UploadFromClient.xml"/>
+    <import resource="awsS3Download.xml"/>
+    <import resource="login.verify.xml"/>
+
+    <bean id="awsCredentials" class="com.amazonaws.auth.AWSStaticCredentialsProvider">
+        <constructor-arg>
+            <bean class="com.amazonaws.auth.BasicAWSCredentials">
+                <constructor-arg value="${build_aws_access_key_id}"/>
+                <constructor-arg value="${build_aws_secret_access_key}"/>
+            </bean>
+        </constructor-arg>
+    </bean>
+
+    <bean id="s3Client" class="com.amazonaws.services.s3.AmazonS3Client">
+        <constructor-arg ref="awsCredentials"/>
+        <constructor-arg>
+            <bean class="com.amazonaws.ClientConfiguration">
+                <property name="signerOverride" value="S3SignerType"/>
+            </bean>
+        </constructor-arg>
+    </bean>
+    <bean id="dynamoDBClient" class="com.amazonaws.services.dynamodbv2.AmazonDynamoDBClient">
+        <constructor-arg ref="awsCredentials"/>
+        <property name="endpoint" value="${uniTestAwsDynamoDbEndpoint}"/>
+    </bean>
+
+    <int:bridge input-channel="outputCallFromEncodingComChannel" output-channel="nullChannel"/>
+
+</beans>

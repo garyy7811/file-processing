@@ -1,0 +1,313 @@
+{
+  "records": [
+    {
+      "eventID": "4550d5efef6a4f829176f4140d5441ed",
+      "eventName": "INSERT",
+      "eventVersion": "1.1",
+      "eventSource": "aws:dynamodb",
+      "awsRegion": "us-east-1",
+      "dynamodb": {
+        "approximateCreationDateTime": 1486403220000,
+        "keys": {
+          "sourceKey": {
+            "s": "1/1/3D4338426E101EB8FB8F97949293B264/1486402965070",
+            "n": null,
+            "b": null,
+            "m": null,
+            "l": null,
+            "ss": null,
+            "ns": null,
+            "bs": null,
+            "null": null,
+            "bool": null
+          },
+          "processId": {
+            "s": "98694018",
+            "n": null,
+            "b": null,
+            "m": null,
+            "l": null,
+            "ss": null,
+            "ns": null,
+            "bs": null,
+            "null": null,
+            "bool": null
+          }
+        },
+        "newImage": {
+          "sourceKey": {
+            "s": "1/1/3D4338426E101EB8FB8F97949293B264/1486402965070",
+            "n": null,
+            "b": null,
+            "m": null,
+            "l": null,
+            "ss": null,
+            "ns": null,
+            "bs": null,
+            "null": null,
+            "bool": null
+          },
+          "fileInfoLst": {
+            "s": null,
+            "n": null,
+            "b": null,
+            "m": null,
+            "l": [
+              {
+                "s": null,
+                "n": null,
+                "b": null,
+                "m": {
+                  "isDefault": {
+                    "s": "true",
+                    "n": null,
+                    "b": null,
+                    "m": null,
+                    "l": null,
+                    "ss": null,
+                    "ns": null,
+                    "bs": null,
+                    "null": null,
+                    "bool": null
+                  },
+                  "bitRate": {
+                    "s": null,
+                    "n": "605",
+                    "b": null,
+                    "m": null,
+                    "l": null,
+                    "ss": null,
+                    "ns": null,
+                    "bs": null,
+                    "null": null,
+                    "bool": null
+                  },
+                  "fileSize": {
+                    "s": null,
+                    "n": "18645493",
+                    "b": null,
+                    "m": null,
+                    "l": null,
+                    "ss": null,
+                    "ns": null,
+                    "bs": null,
+                    "null": null,
+                    "bool": null
+                  },
+                  "relativePath": {
+                    "s": "video/1/1/3D4338426E101EB8FB8F97949293B264/1486402965070/605k.mp4",
+                    "n": null,
+                    "b": null,
+                    "m": null,
+                    "l": null,
+                    "ss": null,
+                    "ns": null,
+                    "bs": null,
+                    "null": null,
+                    "bool": null
+                  }
+                },
+                "l": null,
+                "ss": null,
+                "ns": null,
+                "bs": null,
+                "null": null,
+                "bool": null
+              }
+            ],
+            "ss": null,
+            "ns": null,
+            "bs": null,
+            "null": null,
+            "bool": null
+          },
+          "firstFramePosterframeKey": {
+            "s": "posterframe/1/1/3D4338426E101EB8FB8F97949293B264/1486402965070/first_frame.jpg",
+            "n": null,
+            "b": null,
+            "m": null,
+            "l": null,
+            "ss": null,
+            "ns": null,
+            "bs": null,
+            "null": null,
+            "bool": null
+          },
+          "thumbnailWidth": {
+            "s": null,
+            "n": "200",
+            "b": null,
+            "m": null,
+            "l": null,
+            "ss": null,
+            "ns": null,
+            "bs": null,
+            "null": null,
+            "bool": null
+          },
+          "type": {
+            "s": "video",
+            "n": null,
+            "b": null,
+            "m": null,
+            "l": null,
+            "ss": null,
+            "ns": null,
+            "bs": null,
+            "null": null,
+            "bool": null
+          },
+          "version": {
+            "s": null,
+            "n": "1",
+            "b": null,
+            "m": null,
+            "l": null,
+            "ss": null,
+            "ns": null,
+            "bs": null,
+            "null": null,
+            "bool": null
+          },
+          "defaultPosterframeFileSize": {
+            "s": null,
+            "n": "7572",
+            "b": null,
+            "m": null,
+            "l": null,
+            "ss": null,
+            "ns": null,
+            "bs": null,
+            "null": null,
+            "bool": null
+          },
+          "defaultPosterframeKey": {
+            "s": "posterframe/1/1/3D4338426E101EB8FB8F97949293B264/1486402965070/default_frame.jpg",
+            "n": null,
+            "b": null,
+            "m": null,
+            "l": null,
+            "ss": null,
+            "ns": null,
+            "bs": null,
+            "null": null,
+            "bool": null
+          },
+          "thumbnailKey": {
+            "s": "thumbnail/1/1/3D4338426E101EB8FB8F97949293B264/1486402965070/thumb.jpg",
+            "n": null,
+            "b": null,
+            "m": null,
+            "l": null,
+            "ss": null,
+            "ns": null,
+            "bs": null,
+            "null": null,
+            "bool": null
+          },
+          "firstFramePosterframeFileSize": {
+            "s": null,
+            "n": "4366",
+            "b": null,
+            "m": null,
+            "l": null,
+            "ss": null,
+            "ns": null,
+            "bs": null,
+            "null": null,
+            "bool": null
+          },
+          "fileSize": {
+            "s": null,
+            "n": "15396785",
+            "b": null,
+            "m": null,
+            "l": null,
+            "ss": null,
+            "ns": null,
+            "bs": null,
+            "null": null,
+            "bool": null
+          },
+          "processId": {
+            "s": "98694018",
+            "n": null,
+            "b": null,
+            "m": null,
+            "l": null,
+            "ss": null,
+            "ns": null,
+            "bs": null,
+            "null": null,
+            "bool": null
+          },
+          "downloadKey": {
+            "s": "video/1/1/3D4338426E101EB8FB8F97949293B264/1486402965070/605k.mp4",
+            "n": null,
+            "b": null,
+            "m": null,
+            "l": null,
+            "ss": null,
+            "ns": null,
+            "bs": null,
+            "null": null,
+            "bool": null
+          },
+          "width": {
+            "s": null,
+            "n": "640",
+            "b": null,
+            "m": null,
+            "l": null,
+            "ss": null,
+            "ns": null,
+            "bs": null,
+            "null": null,
+            "bool": null
+          },
+          "thumbnailHeight": {
+            "s": null,
+            "n": "112",
+            "b": null,
+            "m": null,
+            "l": null,
+            "ss": null,
+            "ns": null,
+            "bs": null,
+            "null": null,
+            "bool": null
+          },
+          "thumbnailFileSize": {
+            "s": null,
+            "n": "1974",
+            "b": null,
+            "m": null,
+            "l": null,
+            "ss": null,
+            "ns": null,
+            "bs": null,
+            "null": null,
+            "bool": null
+          },
+          "height": {
+            "s": null,
+            "n": "360",
+            "b": null,
+            "m": null,
+            "l": null,
+            "ss": null,
+            "ns": null,
+            "bs": null,
+            "null": null,
+            "bool": null
+          }
+        },
+        "oldImage": null,
+        "sequenceNumber": "398445400000000014841281613",
+        "sizeBytes": 811,
+        "streamViewType": "NEW_AND_OLD_IMAGES"
+      },
+      "eventSourceARN": "arn:aws:dynamodb:us-east-1:726469603241:table/cs-cloud-dev-gary--download/stream/2016-11-14T21:05:09.989"
+    }
+  ]
+}

@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:int="http://www.springframework.org/schema/integration"
+       xmlns:int-http="http://www.springframework.org/schema/integration/http"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+            http://www.springframework.org/schema/beans/spring-beans.xsd
+            http://www.springframework.org/schema/integration
+            http://www.springframework.org/schema/integration/spring-integration.xsd
+		    http://www.springframework.org/schema/integration/http
+		    http://www.springframework.org/schema/integration/http/spring-integration-http.xsd">
+
+    <int:gateway id="callEncodingCom" service-interface="org.pubanatomy.videotranscoding.EncodingComAPI"
+                 default-request-channel="queryEncodingCom" default-reply-channel="replyEncodingCom">
+    </int:gateway>
+
+    <int:channel id="queryEncodingCom"/>
+    <int:channel id="replyEncodingCom">
+        <int:queue capacity="20"/>
+    </int:channel>
+
+    <int-http:outbound-gateway request-channel="queryEncodingCom" reply-channel="replyEncodingCom"
+                               message-converters="theStringHttpMessageConverter"
+                               url="${encodingComApiUrl}" http-method="POST"
+                               reply-timeout="${encodingComApiTimeout}"
+                               expected-response-type="java.lang.String">
+        <int-http:request-handler-advice-chain>
+            <int:retry-advice max-attempts="5"/>
+        </int-http:request-handler-advice-chain>
+    </int-http:outbound-gateway>
+
+    <bean id="theStringHttpMessageConverter"
+          class="org.springframework.http.converter.StringHttpMessageConverter">
+        <property name="writeAcceptCharset" value="false"/>
+    </bean>
+
+</beans>

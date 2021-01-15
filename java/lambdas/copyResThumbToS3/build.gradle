@@ -1,0 +1,9 @@
+mainClassName = "com.customshow.copyResThumbToS3.CopyResThumbToS3"
+
+dependencies {
+    compile project( ':java_modules:java.awsS3Upload' )
+
+}
+
+
+ext.lambdaEnvNames.add( "copyResThumbS3recordTablename" )

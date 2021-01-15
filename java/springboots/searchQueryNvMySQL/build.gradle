@@ -1,0 +1,15 @@
+dependencies {
+    compile "org.springframework.boot:spring-boot-starter-data-redis"
+    compile "mysql:mysql-connector-java:5.1.43"
+    compile "org.apache.commons:commons-dbcp2:2.1"
+
+    compile "org.springframework.integration:spring-integration-jdbc:$springIntegrationVersion"
+    compile "org.springframework.integration:spring-integration-redis:$springIntegrationVersion"
+
+    testCompile( "org.springframework.boot:spring-boot-starter-test" )
+}
+
+createEcsTaskDef.containerList[ 0 ].memoryLimit=888
+
+
+//startEcsService.count = 1

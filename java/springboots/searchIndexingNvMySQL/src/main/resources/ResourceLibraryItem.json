@@ -1,0 +1,154 @@
+{
+  "settings": {
+    "analysis": {
+      "analyzer": {
+        "filename": {
+          "type": "custom",
+          "tokenizer": "standard",
+          "filter": [
+            "lowercase",
+            "filename_delimiter"
+          ]
+        },
+        "path_analyzer": {
+          "tokenizer": "path_tokenizer"
+        }
+      },
+      "tokenizer": {
+        "path_tokenizer": {
+          "type": "path_hierarchy"
+        }
+      },
+      "filter": {
+        "filename_delimiter": {
+          "type": "word_delimiter",
+          "generate_word_parts": true,
+          "generate_number_parts": true,
+          "catenate_words": true,
+          "catenate_all": true,
+          "split_on_case_change": true,
+          "preserve_original": true
+        }
+      }
+    }
+  },
+  "mappings": {
+    "resource_library_item": {
+      "properties": {
+        "targetUuid": {
+          "type": "keyword",
+          "index": true
+        },
+        "targetId": {
+          "type": "integer"
+        },
+        "folderId": {
+          "type": "integer"
+        },
+        "isLib": {
+          "type": "boolean"
+        },
+        "targetType": {
+          "type": "keyword",
+          "index": true
+        },
+        "targetName": {
+          "type": "text",
+          "analyzer": "filename",
+          "fields": {
+            "raw": {
+              "type": "keyword",
+              "index": true
+            }
+          }
+        },
+        "ownerId": {
+          "type": "integer"
+        },
+        "ownerName": {
+          "type": "keyword",
+          "index": true
+        },
+        "ownerFirstName": {
+          "type": "keyword",
+          "index": true
+        },
+        "ownerLastName": {
+          "type": "keyword",
+          "index": true
+        },
+        "ownerUserName": {
+          "type": "keyword",
+          "index": true
+        },
+        "createdTime": {
+          "type": "date"
+        },
+        "modifiedTime": {
+          "type": "date"
+        },
+        "resourceWidth": {
+          "type": "integer"
+        },
+        "resourceHeight": {
+          "type": "integer"
+        },
+        "filesize": {
+          "type": "long"
+        },
+        "orgFilename": {
+          "type": "text",
+          "analyzer": "filename",
+          "fields": {
+            "raw": {
+              "type": "keyword",
+              "index": true
+            }
+          }
+        },
+        "resourceDuration": {
+          "type": "integer"
+        },
+        "uuidPath": {
+          "type": "text",
+          "analyzer": "filename",
+          "fields": {
+            "raw": {
+              "type": "keyword",
+              "index": true
+            }
+          }
+        },
+        "namePath": {
+          "type": "text",
+          "analyzer": "filename",
+          "fields": {
+            "raw": {
+              "type": "keyword",
+              "index": true
+            }
+          }
+        },
+        "thumbnailFileName": {
+          "type": "text",
+          "analyzer": "filename",
+          "fields": {
+            "raw": {
+              "type": "keyword",
+              "index": true
+            }
+          }
+        },
+        "thumbnailWidth": {
+          "type": "integer"
+        },
+        "thumbnailHeight": {
+          "type": "integer"
+        },
+        "indexedTime": {
+          "type": "date"
+        }
+      }
+    }
+  }
+}

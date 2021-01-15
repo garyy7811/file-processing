@@ -1,0 +1,6 @@
+dependencies {
+    compile project( ":java_modules:java.aws.utils" )
+    compile project( ":java_modules:java.config.per.client" )
+    compile project( ":java_modules:java.login.verify" )
+    compile project( ":java_modules:java.awsS3Download" )
+}

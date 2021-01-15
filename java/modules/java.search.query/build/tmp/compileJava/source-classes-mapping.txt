@@ -1,0 +1,7 @@
+org/pubanatomy/search/indexing/SearchQueryService.java
+ org.pubanatomy.search.indexing.SearchQueryService
+ org.pubanatomy.search.indexing.SearchQueryService$1
+org/pubanatomy/search/indexing/ResourceLibraryItem.java
+ org.pubanatomy.search.indexing.ResourceLibraryItem
+org/pubanatomy/search/indexing/ElasticsearchREST.java
+ org.pubanatomy.search.indexing.ElasticsearchREST

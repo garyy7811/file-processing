@@ -1,0 +1,106 @@
+buildscript{
+    repositories{
+        mavenCentral()
+        jcenter()
+    }
+
+    dependencies{
+        classpath 'com.flashflexpro:multi-env-props:0.0.2'
+    }
+}
+
+apply plugin: "com.flashflexpro.multenvprops"
+
+multiEnvConfig{
+    //strings to replace when cloning new environment
+    propValReplacements = [ "logMailTo":"gary@cs.cc", "cs_config":"cs_config.properties" ]
+}
+ext{
+    log4jVersion = '2.9.1'
+    slf4jVersion = '1.7.25'
+
+    springVersion = '4.3.10.RELEASE'
+    springIntegrationVersion = '4.3.11.RELEASE'
+
+    lombokVersion = '1.18.12'
+
+    awsSdkVersion = '1.11.181'
+
+    jacksonVersion = '2.6.7'
+
+    javaxMailVersion = '1.5.3'
+
+    elasticsearchVersion = '5.6.2'
+    kibanaVersion = '5.6.2'
+
+    jpClassmethodGradlePluginVersion = '0.35'
+    gradlefxVersion = '1.5.0'
+}
+
+
+ext.csConfig.csVersionBuildTime = new Date().format( "yy/MMM/d HH:mm:ss" )
+
+def tmpBcStr = 'B' + csConfig.csVersionBuildCounter
+//local test
+if( Integer.parseInt( csConfig.csVersionBuildCounter ) <= 0 ){
+    tmpBcStr = 'T' + System.currentTimeMillis()
+}
+
+
+ext.csConfig.csVersionBuildRBStr = 'R' + csConfig.csVersionRevision + tmpBcStr
+
+
+String existAwsKeyId = System.getProperty( "aws.accessKeyId" );
+String existAwsSecret = System.getProperty( "aws.secretKey" );
+if( existAwsKeyId?.trim() && existAwsSecret?.trim() ){
+    logger.warn "ignoring csConfig.build_aws_access credentails because system properties already exist:" +
+            existAwsKeyId
+}
+else{
+    logger.info( "setting build_aws_access_key_id to system properties:" + csConfig.build_aws_access_key_id )
+    System.setProperty( "aws.accessKeyId", csConfig.build_aws_access_key_id )
+    System.setProperty( "aws.secretKey", csConfig.build_aws_secret_access_key )
+}
+
+allprojects{
+    group = 'org.pubanatomy'
+    version = csConfig.csVersion
+
+    repositories{
+        mavenLocal()
+        jcenter()/*
+        maven{
+            name 'local nexus'
+            url csConfig.mavenDependencyRepoUrl
+        }*/
+    }
+
+    afterEvaluate{
+        if( project.path.startsWith( ":flash" ) && project.tasks.hasProperty( 'idea' ) ){
+            logger.info( "Idea>>>>>Flash>>>>>Projects" + project.path )
+            rootProject.tasks.ideaFlashProjects.dependsOn project.tasks.idea
+        }
+    }
+
+}
+
+
+cloneEnvProps.doFirst{
+
+    println "*****************************************************************************************"
+    println "*** Before run this task, make sure no local changes to any cs_config.properties ***"
+    println "*****************************************************************************************"
+}
+cloneEnvProps.doLast{
+    println "***************************************************************************************"
+    println "*** The following 5 properties have to be changed manually ***"
+    println "***************************************************************************************"
+
+    println "awsLambdaApiId"
+    println "build_aws_s3_web_distributionId"
+    println "awsS3UploadBucketDistributionId"
+    println "awsS3DownloadBucketDistributionId"
+
+    println "awsLambdaRole  in java/lambdas/cs_config_{ENV}.properties"
+
+}

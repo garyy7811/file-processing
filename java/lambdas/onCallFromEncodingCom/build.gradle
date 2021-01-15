@@ -1,0 +1,73 @@
+mainClassName = "com.customshow.lambda.OnCallFromEncodingCom"
+
+dependencies {
+
+    compile project( ':java_modules:java.videotranscoding' )
+
+}
+
+
+import com.amazonaws.services.s3.AmazonS3Client
+import com.amazonaws.auth.DefaultAWSCredentialsProviderChain
+import com.fasterxml.jackson.databind.ObjectMapper
+
+if( tasks.hasProperty( "migrateFunction" ) ){
+    task addEncodingBucketAccessPolicy {
+        doLast {
+            String encoStat = "{\n" + "            \"Sid\": \"&{sid}&\",\n" + "            \"Effect\": \"Allow\",\n" +
+                    "            \"Principal\": {\n" + "                \"AWS\": \"&{userarn}&\"\n" +
+                    "            },\n" + "            \"Action\": [\"s3:GetObject\",\"s3:PutObject\"],\n" +
+                    "            \"Resource\": \"arn:aws:s3:::&{bucketname}&/*\"\n" + "        }"
+            String sttmtSid = "Give encodingDotCom full access to entire bucket"
+            encoStat = encoStat.replace( "&{sid}&", sttmtSid )
+            encoStat = encoStat.replace( "&{bucketname}&", csConfig.awsS3DownloadBucket )
+            encoStat = encoStat.replace( "&{userarn}&", csConfig.awsS3DownloadBucketVideoEncodingUserArn )
+
+            AmazonS3Client s3Client = new AmazonS3Client( new DefaultAWSCredentialsProviderChain() )
+            String p = s3Client.getBucketPolicy( csConfig.awsS3DownloadBucket ).policyText
+            if( p == null ){
+                p = "{\n    \"Version\": \"2012-10-17\",\n    \"Statement\": [\n        " + encoStat + "\n    ]\n}"
+                logger.info( "apply s3 policy:\n" + p )
+                s3Client.setBucketPolicy( csConfig.awsS3DownloadBucket, p )
+                logger.info( "allow encodingCom full access to path /* policy created" )
+            }
+            else{
+                ObjectMapper om = new ObjectMapper()
+                HashMap policy = om.readValue( p, HashMap.class )
+                List sttmtLst = policy.get( "Statement" )
+                if( sttmtLst.find { it.get( 'Sid' ) == sttmtSid } == null ){
+                    sttmtLst.add( om.readValue( encoStat, HashMap.class ) )
+                    s3Client.setBucketPolicy( csConfig.awsS3DownloadBucket, om.writeValueAsString( policy ) )
+                    logger.info( "encodingCom full access to path /* policy added" )
+                }
+                else{
+                    logger.info( "encodingCom full access to path /* policy exist" )
+                }
+            }
+        }
+    }
+    addEncodingBucketAccessPolicy.dependsOn rootProject.project( ":java_modules" ).tasks.createS3Buckets
+    deployFunctionWithTriggers.dependsOn addEncodingBucketAccessPolicy
+}
+
+test.dependsOn rootProject.project( ":java_modules" ).tasks.createDynaTablesForTests
+
+
+ext.lambdaEnvNames.add( "urlCalledByEncodingCom" )
+ext.lambdaEnvNames.add( "userIdForEncodingCom" )
+ext.lambdaEnvNames.add( "userkeyForEncodingCom" )
+ext.lambdaEnvNames.add( "encodingComApiUrl" )
+ext.lambdaEnvNames.add( "encodingComApiTimeout" )
+ext.lambdaEnvNames.add( "awsTranscodingDynamoTablename" )
+ext.lambdaEnvNames.add( "awsS3UploadDynamoTablename" )
+ext.lambdaEnvNames.add( "awsS3DownloadBucket" )
+ext.lambdaEnvNames.add( "awsS3DownloadDynamoTablename" )
+ext.lambdaEnvNames.add( "awsS3DownloadUrl" )
+ext.lambdaEnvNames.add( "awsConfigPerClientDynamoTablename" )
+ext.lambdaEnvNames.add( "backToUpdateStatusInMin" )
+ext.lambdaEnvNames.add( "awsS3DownloadBucketAccessKeyAndEncodedSecret" )
+ext.lambdaEnvNames.add( "rootUserId" )
+ext.lambdaEnvNames.add( "awsS3UploadBucket" )
+ext.lambdaEnvNames.add( "awsS3UploadUrl" )
+ext.lambdaEnvNames.add( "awsLoginVerificationDynamoTablename" )
+ext.lambdaEnvNames.add( "resourceStatusQueueUrl" )

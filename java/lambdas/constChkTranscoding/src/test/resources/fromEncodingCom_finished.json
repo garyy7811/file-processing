@@ -1,0 +1,65 @@
+{
+  "result": {
+    "mediaid": "91796247",
+    "source": "https://cs-cloud-trunk--upload.s3.amazonaws.com/0/1/ED7953FD2B00A07A46B8E650244077CC/1481221664072?x-amz-security-token=FQoDYXdzEDQaDNdEkoO3QEeqKpLJRCKLAuJc55AasHunCkOTd4I36PfKEvnQrsX4BK7vnfBuqr6dJkxWM6GWtoXDHjRe1vbOTuMNNElN%2BgktR3dVHJbYdzd73Qjp2PZgUmHJ1lKCGc45PDL%2Bx5vQJpDOuNnkB2GbNwBPZIsngQA3vLGWGyiq8sZ20aHJZjfY%2FjD%2ByHRczsvmR9qF5jbTuUIEuUN7xCsZ71Cv%2ByV1tOjyCybmjNpyz%2B72RC9c%2BRSbGVUVMbX8%2Boghck1GTWihWCylwhDKxxSg%2Bh0TeB%2F2ejf2Uwttzup4ejcpt%2FBa7RuSgSKidl3WsOg4H3gRHfnGoZ7MhML%2BM%2BzMWctNdv8TEv5rBVEY1sufEjNz0KA0Tf%2FUPAceaSihzKbCBQ%3D%3D&AWSAccessKeyId=ASIAJUZSBMIREXSSVYVA&Expires=1481228912&Signature=ktADcvUHgdFrCzuwV0vKWqoJT%2BI%3D",
+    "status": "Finished",
+    "description": [ ],
+    "encodinghost": "http://manage.encoding.com/",
+    "format": [
+      {
+        "taskid": "319526070",
+        "output": "mp4",
+        "status": "Finished",
+        "destination": "https://AKIAI5OSSQS7K27QGEMA:2soHBdIMcXX%2FoLiAvehY8YpBuwEoqTk2SPqHAXHL@cs-cloud-trunk--download.s3.amazonaws.com/video/0/1/ED7953FD2B00A07A46B8E650244077CC/1481221664072/1500k.mp4"
+      },
+      {
+        "taskid": "319526073",
+        "output": "thumbnail",
+        "status": "Finished",
+        "destination": "https://AKIAI5OSSQS7K27QGEMA:2soHBdIMcXX%2FoLiAvehY8YpBuwEoqTk2SPqHAXHL@cs-cloud-trunk--download.s3.amazonaws.com/video/0/1/ED7953FD2B00A07A46B8E650244077CC/1481221664072/1920x1080_5p.jpeg"
+      },
+      {
+        "taskid": "319526076",
+        "output": "mp4",
+        "status": "Finished",
+        "destination": "https://AKIAI5OSSQS7K27QGEMA:2soHBdIMcXX%2FoLiAvehY8YpBuwEoqTk2SPqHAXHL@cs-cloud-trunk--download.s3.amazonaws.com/video/0/1/ED7953FD2B00A07A46B8E650244077CC/1481221664072/1000k.mp4"
+      },
+      {
+        "taskid": "319526079",
+        "output": "thumbnail",
+        "status": "Finished",
+        "destination": "https://AKIAI5OSSQS7K27QGEMA:2soHBdIMcXX%2FoLiAvehY8YpBuwEoqTk2SPqHAXHL@cs-cloud-trunk--download.s3.amazonaws.com/video/0/1/ED7953FD2B00A07A46B8E650244077CC/1481221664072/200x112_5p.jpeg"
+      },
+      {
+        "taskid": "319526082",
+        "output": "mp4",
+        "status": "Finished",
+        "destination": "https://AKIAI5OSSQS7K27QGEMA:2soHBdIMcXX%2FoLiAvehY8YpBuwEoqTk2SPqHAXHL@cs-cloud-trunk--download.s3.amazonaws.com/video/0/1/ED7953FD2B00A07A46B8E650244077CC/1481221664072/2000k.mp4"
+      },
+      {
+        "taskid": "319526085",
+        "output": "mp4",
+        "status": "Finished",
+        "destination": "https://AKIAI5OSSQS7K27QGEMA:2soHBdIMcXX%2FoLiAvehY8YpBuwEoqTk2SPqHAXHL@cs-cloud-trunk--download.s3.amazonaws.com/video/0/1/ED7953FD2B00A07A46B8E650244077CC/1481221664072/1000k.mp4"
+      },
+      {
+        "taskid": "319526088",
+        "output": "mp4",
+        "status": "Finished",
+        "destination": "https://AKIAI5OSSQS7K27QGEMA:2soHBdIMcXX%2FoLiAvehY8YpBuwEoqTk2SPqHAXHL@cs-cloud-trunk--download.s3.amazonaws.com/video/0/1/ED7953FD2B00A07A46B8E650244077CC/1481221664072/1250k.mp4"
+      },
+      {
+        "taskid": "319526091",
+        "output": "mp4",
+        "status": "Finished",
+        "destination": "https://AKIAI5OSSQS7K27QGEMA:2soHBdIMcXX%2FoLiAvehY8YpBuwEoqTk2SPqHAXHL@cs-cloud-trunk--download.s3.amazonaws.com/video/0/1/ED7953FD2B00A07A46B8E650244077CC/1481221664072/2500k.mp4"
+      },
+      {
+        "taskid": "319526094",
+        "output": "thumbnail",
+        "status": "Finished",
+        "destination": "https://AKIAI5OSSQS7K27QGEMA:2soHBdIMcXX%2FoLiAvehY8YpBuwEoqTk2SPqHAXHL@cs-cloud-trunk--download.s3.amazonaws.com/video/0/1/ED7953FD2B00A07A46B8E650244077CC/1481221664072/1920x1080_0_02.jpeg"
+      }
+    ]
+  }
+}

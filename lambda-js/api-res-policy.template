@@ -1,0 +1,22 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Principal": "*",
+            "Action": "execute-api:*",
+            "Resource": "arn:aws:execute-api:*"
+        },
+        {
+            "Effect": "Deny",
+            "Principal": "*",
+            "Action": "execute-api:*",
+            "Resource": "arn:aws:execute-api:us-east-1:726469603241:&{apiID}&/&{stageName}&/*/slideshowlist",
+            "Condition": {
+                "NotIpAddress": {
+                    "aws:SourceIp": &{zfServerIpArrStr}&
+                }
+            }
+        }
+    ]
+}

@@ -1,0 +1,26 @@
+{
+  "query": {
+    "bool": {
+      "must": [
+        {
+          "range": {
+            "targetId": {
+              "gte": 22222,
+              "lt": 33333
+            }
+          }
+        }
+      ],
+      "must_not": [
+        {
+          "term": {
+            "targetType": {
+              "value": "folder"
+            }
+          }
+        }
+      ]
+    }
+  },
+  "size": 0
+}

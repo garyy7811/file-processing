@@ -1,0 +1,25 @@
+{
+  "name": "getAuthorizedFolders",
+  "version": "1.0.0",
+  "description": "lambda function",
+  "main": "getAuthorizedFolders.js",
+  "directories": {
+    "lib": "lib"
+  },
+  "dependencies": {
+    "data2xml": "^1.2.5",
+    "mysql": "^2.15.0",
+    "promise-mysql": "^3.2.0",
+    "stream-buffers": "^3.0.1",
+    "xml2js": "^0.4.19",
+    "xmldom": "^0.1.27",
+    "xpath": "0.0.27"
+  },
+  "devDependencies": {
+    "aws-sdk": "^2.190.0",
+    "dotenv": "^4.0.0"
+  },
+  "scripts": {},
+  "author": "greg",
+  "license": "ISC"
+}

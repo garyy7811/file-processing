@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:int="http://www.springframework.org/schema/integration"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+       http://www.springframework.org/schema/beans/spring-beans.xsd
+       http://www.springframework.org/schema/context
+       http://www.springframework.org/schema/context/spring-context.xsd
+       http://www.springframework.org/schema/integration
+       http://www.springframework.org/schema/integration/spring-integration.xsd">
+
+    <context:property-placeholder location="test-config.properties"/>
+
+    <context:annotation-config/>
+
+
+    <import resource="login.verify.xml"/>
+    <import resource="awsS3UploadFromClient.xml"/>
+    <import resource="awsS3Download.xml"/>
+    <import resource="config.per.client.service.xml"/>
+    <import resource="processImgFla.xml"/>
+
+    <bean class="com.amazonaws.auth.BasicAWSCredentials" id="basicAWSCredentials">
+        <constructor-arg value="${build_aws_access_key_id}"/>
+        <constructor-arg value="${build_aws_secret_access_key}"/>
+    </bean>
+    <bean id="credentialsProvider" class="com.amazonaws.auth.AWSStaticCredentialsProvider">
+        <constructor-arg ref="basicAWSCredentials"/>
+    </bean>
+    <bean id="dynamoDBClient" class="com.amazonaws.services.dynamodbv2.AmazonDynamoDBClient">
+        <constructor-arg ref="credentialsProvider"/>
+        <property name="endpoint" value="${uniTestAwsDynamoDbEndpoint}"/>
+    </bean>
+
+
+    <bean class="org.pubanatomy.test.S3UploadFromFlashTests$MockitFactory">
+        <constructor-arg value="#{T(com.amazonaws.services.s3.AmazonS3)}"/>
+    </bean>
+
+    <bean class="org.pubanatomy.test.S3UploadFromFlashTests$MockitFactory">
+        <constructor-arg value="#{T(com.amazonaws.services.sqs.AmazonSQSClient)}"/>
+    </bean>
+
+
+
+    <!-- FROM root-context -->
+    <bean class="com.flashflexpro.graniteamf.SimpleGraniteConfig">
+        <constructor-arg>
+            <bean class="org.granite.messaging.amf.io.RegexAMF3DeserializerSecurizer">
+                <property name="param"
+                          value="#{'(^com\.customshow\..+|^com\.flashflexpro\..+|^flex\.messaging\.io\..+)'}"/>
+            </bean>
+        </constructor-arg>
+    </bean>
+
+    <bean id="rpcServiceInvoker" class="org.pubanatomy.siutils.RPCServiceInvoker" init-method="dumpServiceBeanMap">
+        <constructor-arg>
+            <map>
+                <entry key="awsS3UploadService" value-ref="awsS3UploadService"/>
+                <entry key="processImgFlaService" value-ref="processImgFlaService"/>
+                <entry key="configPerClientService" value-ref="configPerClientService"/>
+                <entry key="logging">
+                    <bean class="org.pubanatomy.siutils.FlashLogging"/>
+                </entry>
+            </map>
+        </constructor-arg>
+    </bean>
+
+</beans>

@@ -1,0 +1,54 @@
+import com.amazonaws.AmazonWebServiceClient
+import com.amazonaws.regions.RegionUtils
+import com.amazonaws.services.sqs.AmazonSQSClient
+import com.amazonaws.services.sqs.model.CreateQueueResult
+import org.pubanatomy.awsUtils.AddDynamoTriggerToLambda
+
+mainClassName = 'DispatchingTranscodingEvent'
+
+dependencies {
+
+    compile project( ':java_modules:java.videotranscoding' )
+    compile project( ':java_modules:java.awsS3Download' )
+
+}
+
+
+
+configurations {
+    compile.exclude module: "bcprov-jdk15on"
+    compile.exclude module: "elasticsearch"
+}
+
+if( tasks.hasProperty( "migrateFunction" ) ){
+    task addDynaLambdaTriggers( type: AddDynamoTriggerToLambda ) {
+        awsRegion = csConfig.aws_region
+
+        lambdaFunctionName = csConfig.awsLambdaFunctionName
+        tableNameToSizeTypePosition = ["$csConfig.awsTranscodingDynamoTablename": ""]
+    }
+
+    addDynaLambdaTriggers.dependsOn rootProject.project( ":java_modules" ).tasks.createDynaTables
+    addDynaLambdaTriggers.dependsOn migrateFunction
+
+    deployFunctionWithTriggers.dependsOn addDynaLambdaTriggers
+
+    processResources.dependsOn rootProject.project( ":java_modules" ).tasks.createSQS
+
+}
+
+ext.lambdaEnvNames.add( "urlCalledByEncodingCom" )
+ext.lambdaEnvNames.add( "userIdForEncodingCom" )
+ext.lambdaEnvNames.add( "userkeyForEncodingCom" )
+ext.lambdaEnvNames.add( "encodingComApiUrl" )
+ext.lambdaEnvNames.add( "encodingComApiTimeout" )
+ext.lambdaEnvNames.add( "awsTranscodingDynamoTablename" )
+ext.lambdaEnvNames.add( "awsS3UploadDynamoTablename" )
+ext.lambdaEnvNames.add( "awsS3DownloadBucket" )
+ext.lambdaEnvNames.add( "awsS3DownloadDynamoTablename" )
+ext.lambdaEnvNames.add( "awsConfigPerClientDynamoTablename" )
+ext.lambdaEnvNames.add( "backToUpdateStatusInMin" )
+ext.lambdaEnvNames.add( "resourceStatusQueueUrl" )
+ext.lambdaEnvNames.add( "awsS3DownloadBucketAccessKeyAndEncodedSecret" )
+ext.lambdaEnvNames.add( "rootUserId" )
+ext.lambdaEnvNames.add( "awsLoginVerificationDynamoTablename" )

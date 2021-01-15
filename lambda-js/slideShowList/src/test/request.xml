@@ -1,0 +1,15 @@
+<request>
+    <operation opcode="GET_CUSTOMSHOW_SLIDESHOWS">
+        <params
+                tenant_id="12"
+                username="greg@sg.com"
+                include_own_slideshows="true"
+                include_shared_slideshows="true"
+                sort_by_field="name"
+                sort_direction="asc"
+                search_phrase=""
+                page_size="10"
+                offset="0"
+        />
+    </operation>
+</request>

@@ -1,0 +1,19 @@
+ext.myEhcacheXml = "------------------>>>>>>>>> myEhcache.xml"
+
+dependencies {
+
+    compile  'com.flashflexpro:simple-amf-all:0.0.1'
+
+    compile project( ':java_modules:java.awsS3Download' )
+
+    compile project( ':java_modules:java.login.verify' )
+
+    compile "net.sf.ehcache:ehcache:2.10.1"
+
+
+}
+
+
+configurations {
+    compile.exclude module: "elasticsearch"
+}

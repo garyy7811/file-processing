@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+
+input{
+    tcp{ port=>5678 }
+}
+filter {
+    grok {
+        match => { "message" => "^∈20%{DATESTAMP:timestamp} %{ISO8601_TIMEZONE:timezone}∋∈(?<logname>.*?)∋∈(?<envconfig>.*?\.properties)∋∈(?<csversion>\d+\.\d+\.\d+(-SNAPSHOT)?)∋∈R(?<revision>\d+)B(?<buildcount>\d+)∋∈(?<thread>.*?)∋∈(?<class>(?:[a-zA-Z0-9-]+?\.)+?[A-Za-z0-9$]+?)∋∈(?<method>(?:(<(?:cl)*?init>)|[a-zA-Z$_][a-zA-Z$_0-9]*?))∋∈(?<file>(?:[a-zA-Z0-9-]+?\.)+?[A-Za-z0-9$]+?)∋∈(?<linenum>[0-9]*?)∋∈(?<loglevel>[a-zA-Z]*?)∋∈(?<logmsg>.*)∋$" }
+    }
+}
+output {
+    elasticsearch { hosts => ["localhost:9200"] }
+}
+
+-->
+<Configuration status="DEBUG" packages="com.customshow.awsutils">
+    <Appenders>
+        <Socket name="socket" host="${logStashSocketHost}" port="${logStashSocketPort}"
+                immediateFlush="${logStashSocketImmediateFlush}">
+            <PatternLayout pattern="∈%d{yyyy-MM-dd HH:mm:ss,SSS Z}∋∈${logName}∋∈${cs_config}∋∈${csVersion}∋∈${csVersionBuildRBStr}∋∈%t∋∈%c∋∈%M∋∈%F∋∈%L∋∈%level{lowerCase=true}∋∈%replace{%m}{(\r|\n)}{⊃}∋%n" alwaysWriteExceptions="false"/>
+        </Socket>
+        <Socket name="socket_FLA" host="${logStashSocketHost}" port="${logStashSocketPort}"
+                immediateFlush="${logStashSocketImmediateFlush}">
+            <PatternLayout pattern="%replace{%m}{(\r|\n)}{⊃}%n" alwaysWriteExceptions="false"/>
+        </Socket>
+        <Log4j2LambdaAppender name="Log4j2LambdaAppender">
+            <PatternLayout pattern="%d{yyyy-MM-dd HH:mm:ss,SSS Z} (%X{AWSRequestId}) %t %c.%M:%L %level %m%n"/>
+        </Log4j2LambdaAppender>
+        <Failover name="Failover" primary="socket">
+            <Failovers>
+                <AppenderRef ref="Log4j2LambdaAppender"/>
+            </Failovers>
+        </Failover>
+        <Failover name="Failover_FLA" primary="socket_FLA">
+            <Failovers>
+                <AppenderRef ref="Log4j2LambdaAppender"/>
+            </Failovers>
+        </Failover>
+    </Appenders>
+    <Loggers>
+        <Logger additivity="false" name="FlashLogging" level="FATAL">
+            <AppenderRef ref="socket_FLA"/>
+            <AppenderRef ref="Log4j2LambdaAppender"/>
+        </Logger>
+
+        <Logger additivity="false" name="org.springframework" level="${loggerSpringLevel}">
+            <AppenderRef ref="socket"/>
+            <AppenderRef ref="Log4j2LambdaAppender"/>
+        </Logger>
+        <Logger additivity="false" name="org.springframework.integration" level="${loggerSpringIntegrationLevel}">
+            <AppenderRef ref="socket"/>
+            <AppenderRef ref="Log4j2LambdaAppender"/>
+        </Logger>
+        <Logger additivity="false" name="com.amazonaws" level="${loggerAwsLevel}">
+            <AppenderRef ref="socket"/>
+            <AppenderRef ref="Log4j2LambdaAppender"/>
+        </Logger>
+        <Logger additivity="false" name="com.customshow" level="${loggerCustomShowLevel}">
+            <AppenderRef ref="socket"/>
+            <AppenderRef ref="Log4j2LambdaAppender"/>
+        </Logger>
+        <Root level="${loggerRootLevel}">
+            <AppenderRef ref="socket"/>
+            <AppenderRef ref="Log4j2LambdaAppender"/>
+        </Root>
+
+    </Loggers>
+</Configuration>

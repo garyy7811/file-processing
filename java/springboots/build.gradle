@@ -1,0 +1,629 @@
+buildscript {
+    repositories {
+        mavenCentral()
+        jcenter()
+    }
+    dependencies {
+        classpath "org.springframework.boot:spring-boot-gradle-plugin:1.5.7.RELEASE"
+        classpath "se.transmode.gradle:gradle-docker:1.2"
+        classpath "com.amazonaws:aws-java-sdk:$awsSdkVersion"
+
+        classpath "org.elasticsearch.client:elasticsearch-rest-client:$elasticsearchVersion"
+    }
+}
+
+
+import com.amazonaws.auth.DefaultAWSCredentialsProviderChain
+import com.amazonaws.regions.RegionUtils
+import com.amazonaws.services.logs.AWSLogsClient
+import com.amazonaws.services.logs.model.DeleteSubscriptionFilterRequest
+import com.amazonaws.services.logs.model.PutSubscriptionFilterRequest
+import com.amazonaws.services.s3.AmazonS3Client
+import com.amazonaws.services.s3.model.AmazonS3Exception
+import org.pubanatomy.awsUtils.CreateEcsAutoScalingLaunchConfig
+import org.pubanatomy.awsUtils.CreateEcsTaskDefinition
+import org.pubanatomy.awsUtils.StartEcsService
+
+if (!csConfig.elasticsearchRESTURLs?.trim()) {
+    csConfig.elasticsearchRESTURLs = "http://" + csConfig.ecsElasticSearchDomainName + ":9200"
+}
+
+task uploadEcsConfig {
+    doLast {
+        AmazonS3Client s3Client = new AmazonS3Client(new DefaultAWSCredentialsProviderChain())
+        String ecsConfigStr = file('ecs-boot/etc-ecs-ecs.config').text
+
+        csConfig.each {
+            ecsConfigStr = ecsConfigStr.replaceAll("\\\$\\{" + it.key + "\\}", it.value)
+        }
+
+        while (true) {
+            try {
+                s3Client.putObject(csConfig.awsS3ConfigBucket, csConfig.ecsEtcEcsConfigS3Path, ecsConfigStr)
+                break
+            }
+            catch (AmazonS3Exception as3e) {
+                if (as3e.getErrorCode() == 'SlowDown') {
+                    Thread.currentThread().sleep(999)
+                } else {
+                    throw as3e
+                }
+            }
+        }
+    }
+}
+
+uploadEcsConfig.dependsOn rootProject.project(":java_modules").tasks.createS3Buckets
+
+
+task createEcsAutoScaleLaunchConfig(type: CreateEcsAutoScalingLaunchConfig, dependsOn: uploadEcsConfig) {
+    launchConfigName = csConfig.ecsLaunchConfigName
+    launchConfigImgId = csConfig.ecsLaunchConfigImgId
+    launchConfigSecurityGroups = csConfig.ecsLaunchConfigSecurityGroups
+    launchConfigKeyName = csConfig.ecsLaunchConfigKeyName
+    launchConfigInstanceType = csConfig.ecsLaunchConfigInstanceType
+    launchConfigIamInstanceProfile = csConfig.ecsLaunchConfigIamInstanceProfile
+    launchConfigDockerRegistryPull = csConfig.dockerRegistryPull
+    launchConfigEcsEtcEcsConfigS3Bucket = csConfig.awsS3ConfigBucket
+    launchConfigEcsEtcEcsConfigS3Path = csConfig.ecsEtcEcsConfigS3Path
+    launchConfigUserDataYaml = file("ecs-boot/launch-config-user-data.yaml")
+    autoScalingGroupName = csConfig.ecsAutoScalingGroupName
+    logGroupName = csConfig.ecsLogsGroup
+    efsArgs = csConfig.ecsLaunchConfigEfsArgs
+    efsDomainName = csConfig.ecsLaunchConfigEfsDomainName
+    vpcSubnets = csConfig.ecsAutoScaleSubnets
+    autoScalingMax = 3
+    autoScalingMin = 1
+    autoScalingDesired = 2
+}
+
+if (csConfig.ecsMySQLEfsPath?.trim()) {
+
+    task createMySQLTaskDef(type: CreateEcsTaskDefinition) {
+
+        taskDefName = csConfig.ecsMySQLTaskName
+        awsLogsGroup = csConfig.ecsLogsGroup
+        domainName = csConfig.ecsMySqlDomainName
+        awsS3ConfigBucket = csConfig.awsS3ConfigBucket
+        awsLogsStreamPrefix = "/ecs/task/" + taskDefName
+
+        def envVarMappings = []
+        // only define the password variable if the property is non-empty
+        if (csConfig.ecsMySQLUser == 'root' && csConfig.ecsMySQLPass?.trim()) {
+            envVarMappings = ["MYSQL_ROOT_PASSWORD": csConfig.ecsMySQLPass]
+        }
+        containerList = [
+
+                CreateEcsTaskDefinition.ContainerModel.newInstance([image         : csConfig.dockerRegistryPull + "/percona:5.5",
+                                                                    portMappings  : [3306: 3306],
+                                                                    memoryLimit   : 256,
+                                                                    mountMappings : [
+
+                                                                            ("/efs/" + csConfig.ecsMySQLEfsPath + "/data"): "/var/lib/mysql",
+                                                                            ("/efs/" + csConfig.ecsMySQLEfsPath + "/conf"): "/etc/mysql/conf.d"
+
+                                                                    ],
+                                                                    envVarMappings: envVarMappings]),
+
+                CreateEcsTaskDefinition.ContainerModel.newInstance([image         : "newrelic/mysql-plugin", essential: false,
+                                                                    memoryLimit   : 256,
+                                                                    envVarMappings: ["NEW_RELIC_LICENSE_KEY": "f49e31301e9173c468826a2d1e551ea4165af44e",
+                                                                                     "AGENT_HOST"           : csConfig.ecsMySqlDomainName,
+                                                                                     "AGENT_USER"           : "nrdocker",
+                                                                                     "AGENT_PASSWD"         : "csnewrelicdocker",
+                                                                                     "AGENT_METRICS"        : "newrelic,status,slave",
+                                                                                     "AGENT_NAME"           : csConfig.ecsMySQLTaskName + "--percona"]])
+
+        ]
+
+        increaseRevisionOnExist = Boolean.parseBoolean(csConfig.updateServerTaskDef)
+
+    }
+
+    task startMySQLEcsService(type: StartEcsService, dependsOn: [createEcsAutoScaleLaunchConfig, createMySQLTaskDef]) {
+        doFirst {
+            taskDefName = createMySQLTaskDef.taskDefName
+            taskDefinitionArn = createMySQLTaskDef.taskDefinitionArn
+        }
+        ecsClusterName = csConfig.ecsClusterName
+    }
+
+}
+
+if (csConfig.ecsRedisEfsPath?.trim()) {
+    task createRedisTaskDef(type: CreateEcsTaskDefinition) {
+        taskDefName = csConfig.ecsRedisTaskName
+
+        awsS3ConfigBucket = csConfig.awsS3ConfigBucket
+        domainName = csConfig.ecsRedisDomainName
+        awsLogsGroup = csConfig.ecsLogsGroup
+        awsLogsStreamPrefix = "/ecs/task/" + taskDefName
+
+        containerList = [
+
+                CreateEcsTaskDefinition.ContainerModel.
+                        newInstance([image        : csConfig.dockerRegistryPull + "/redis:3.2.10",
+                                     portMappings : [6379: 6379],
+                                     memoryLimit  : 512,
+                                     mountMappings: [("/efs/" + csConfig.ecsRedisEfsPath): "/data"],
+                                     ulimits      : ["nofile=98304:98304"],
+                                     command      : "redis-server --appendonly yes"]),
+                CreateEcsTaskDefinition.ContainerModel.
+                        newInstance([image         : "sspinc/newrelic-redis",
+                                     memoryLimit   : 128, essential: false,
+                                     envVarMappings: ["REDIS_INSTANCE_NAME" : csConfig.ecsRedisDomainName,
+                                                      "NEWRELIC_LICENSE_KEY": "f49e31301e9173c468826a2d1e551ea4165af44e",
+                                                      "REDIS_URL"           : "redis://" + csConfig.ecsRedisDomainName + ":6379"]])
+
+
+        ]
+        increaseRevisionOnExist = Boolean.parseBoolean(csConfig.updateServerTaskDef)
+    }
+
+    task startRedisEcsService(type: StartEcsService, dependsOn: [createEcsAutoScaleLaunchConfig, createRedisTaskDef]) {
+        doFirst {
+            taskDefName = createRedisTaskDef.taskDefName
+            taskDefinitionArn = createRedisTaskDef.taskDefinitionArn
+        }
+        ecsClusterName = csConfig.ecsClusterName
+    }
+}
+
+
+
+if( csConfig.ecsElasticSearchMemXmx?.trim() ){
+    task createElastiSearchTaskDef( type: CreateEcsTaskDefinition ) {
+
+        taskDefName = csConfig.ecsElasticSearchTaskName
+        def memoryLimit = Integer.parseInt( csConfig.ecsElasticSearchMemXmx )
+        if( memoryLimit < 128 ){
+            throw new Error( 'csConfig.ecsElasticSearchMemXmx toooo low, has to > 128' )
+        }
+
+        int esMemLimit = Math.floor( memoryLimit / 2 ).intValue()
+        int esMemMin = Integer.parseInt( csConfig.ecsElasticSearchMemXms )
+        if( esMemMin > esMemLimit ){
+            esMemMin = esMemLimit
+            logger.warn( "ecsElasticSearchMemXms set to " + esMemMin )
+        }
+
+
+        awsS3ConfigBucket = csConfig.awsS3ConfigBucket
+        domainName = csConfig.ecsElasticSearchDomainName
+
+        awsLogsGroup = csConfig.ecsLogsGroup
+
+        awsLogsStreamPrefix = "/ecs/task/" + taskDefName
+
+
+        containerList = [
+
+                CreateEcsTaskDefinition.ContainerModel.newInstance( [image         : csConfig.dockerRegistryPull + "/elasticsearch/elasticsearch:$elasticsearchVersion",
+                                                                     portMappings  : [9200: 9200, 9300: 9300],
+                                                                     memoryLimit   : memoryLimit,
+                                                                     memoryReserve : esMemMin,
+                                                                     mountMappings : [( "/efs/" + csConfig.ecsElasticSearchEfsPath ): "/usr/share/elasticsearch/data"],
+                                                                     envVarMappings: ["xpack.ml.enabled"        : "false",
+                                                                                      "xpack.monitoring.enabled": "false",
+                                                                                      "xpack.security.enabled"  : "false",
+                                                                                      "xpack.watcher.enabled"   : "false",
+
+                                                                                      "http.host"               : "0.0.0.0",
+                                                                                      "transport.host"          : "127.0.0.1",
+                                                                                      "discovery.type"          : "single-node",
+                                                                                      "ES_JAVA_OPTS"            : "-Xms" + esMemMin + "m -Xmx" + esMemLimit + "m  "],
+                                                                     ulimits       : ["nofile=98304:98304"]] ),
+
+                CreateEcsTaskDefinition.ContainerModel.newInstance( [image         : "s12v/newrelic-elasticsearch",
+                                                                     memoryLimit   : 256, essential: false,
+                                                                     envVarMappings: ["NEW_RELIC_LICENSE_KEY": "f49e31301e9173c468826a2d1e551ea4165af44e",
+                                                                                      "ES_HOST"              : csConfig.ecsElasticSearchDomainName,
+                                                                                      "ES_PORT"              : "9200",
+                                                                                      "ES_NAME"              : csConfig.ecsElasticSearchDomainName,
+                                                                                      "ES_PROTOCOL"          : "http",
+                                                                                      "ES_RECONNECTS"        : "9999"]] ),
+
+                CreateEcsTaskDefinition.ContainerModel.
+                        newInstance( [image         : csConfig.dockerRegistryPull + "/kibana/kibana:$kibanaVersion",
+                                      portMappings  : [5601: 5601],
+                                      memoryLimit   : 512, essential: false,
+                                      envVarMappings: ["NODE_OPTIONS"     : "--max-old-space-size=256",
+                                                       "ELASTICSEARCH_URL": "http://" + csConfig.ecsElasticSearchDomainName + ":9200"]] )
+
+        ]
+
+        increaseRevisionOnExist = Boolean.parseBoolean( csConfig.updateServerTaskDef )
+    }
+
+    task startElasticSearchEcsService( type: StartEcsService,
+            dependsOn: [createEcsAutoScaleLaunchConfig, createElastiSearchTaskDef] ) {
+        doFirst {
+            taskDefName = createElastiSearchTaskDef.taskDefName
+            taskDefinitionArn = createElastiSearchTaskDef.taskDefinitionArn
+        }
+        ecsClusterName = csConfig.ecsClusterName
+    }
+
+
+}
+
+static String getJavaOptsEnvStr( Project p ){
+
+    String jOpts = ""
+    if( p.ext.jmxRemotePort > 1024 && p.ext.domainName?.trim() ){
+        jOpts = "-Dcom.sun.management.jmxremote=true -Dcom.sun.management.jmxremote.ssl=false -Dcom.sun.management.jmxremote.authenticate=false " +
+                " -Dcom.sun.management.jmxremote.port=" + p.ext.jmxRemotePort + " -Dcom.sun.management.jmxremote.rmi.port=" + p.ext.jmxRemotePort + " -Djava.rmi.server.hostname=" +
+                p.ext.domainName + " -Dcom.sun.management.jmxremote.local.only=false"
+    }
+    if( p.ext.dockerJavaOpts?.trim() ){
+        jOpts += p.ext.dockerJavaOpts
+    }
+    if( p.ext.debugRemotePort > 1024 ){
+        jOpts += " -Xdebug -agentlib:jdwp=transport=dt_socket,address=*:${p.ext.debugRemotePort},server=y,suspend=y "
+    }
+    else{
+        println "No debugging p.ext.debugRemotePort=" + p.ext.debugRemotePort
+    }
+    return jOpts
+
+}
+
+subprojects {
+
+    apply plugin: 'org.springframework.boot'
+    // tag::plugin[]
+    apply plugin: 'docker'
+
+    sourceCompatibility = 1.8
+    targetCompatibility = 1.8
+
+    compileJava.options.encoding = 'UTF-8'
+    evaluationDependsOn(":java_modules")
+
+    jar {
+        baseName = project.name
+        version = csConfig.csVersion
+    }
+
+    configurations {
+        compile.exclude module: "logback-classic"
+        compile.exclude module: "commons-logging"
+        compile.exclude module: "spring-boot-starter-logging"
+
+        all {
+            resolutionStrategy {
+                dependencySubstitution {
+                    def m1 = module("org.elasticsearch:elasticsearch")
+                    def m2 = module("org.elasticsearch:elasticsearch:$elasticsearchVersion")
+
+                    substitute m1 with m2
+                }
+            }
+        }
+    }
+
+    dependencies {
+        compile "com.fasterxml.jackson.core:jackson-core:$jacksonVersion"
+        compile "com.fasterxml.jackson.core:jackson-databind:$jacksonVersion"
+        compile "com.fasterxml.jackson.core:jackson-annotations:$jacksonVersion"
+
+        compile "org.springframework.boot:spring-boot-starter"
+        compile "org.springframework.boot:spring-boot-starter-log4j2"
+
+        compile "org.springframework.boot:spring-boot-starter-integration"
+        compile "org.springframework.integration:spring-integration-groovy:$springIntegrationVersion"
+        compile "org.springframework.integration:spring-integration-file:$springIntegrationVersion"
+
+        testCompile("org.springframework.boot:spring-boot-starter-test")
+
+
+        compileOnly "org.projectlombok:lombok:$lombokVersion"
+        annotationProcessor "org.projectlombok:lombok:$lombokVersion"
+    }
+
+    processResources {
+        filesMatching('*.properties') {
+            println "processResources>>>filesMatching>>>>"
+            filter { String line ->
+                csConfig.each {
+                    line = line.replaceAll("\\\$\\{" + it.key + "\\}", it.value)
+                }
+                return line
+            }
+        }
+    }
+    task txtFilesToConfig {
+        doFirst {
+            project.fileTree("src/main/resources").include("*.sql").each {
+                def replaced = it.text.replaceAll(System.lineSeparator(), ' ')
+                csConfig[ it.name.replaceAll( "\\.", "_" ) ] = replaced
+                println "sql config:" + it.name + "=" + replaced
+            }
+        }
+    }
+    processResources.dependsOn txtFilesToConfig
+
+
+    processTestResources {
+        filesMatching('*.properties') {
+            filter { String line ->
+                csConfig.each {
+                    line = line.replaceAll("\\\$\\{" + it.key + "\\}", it.value)
+                }
+                return line
+            }
+        }
+    }
+
+    project.ext.domainName = ""
+    project.ext.dockerJavaOpts = ""
+    project.ext.dockerMappingPorts = ""
+    project.ext.jmxRemotePort = -1
+    project.ext.debugRemotePort = -1
+
+    task filterLog4j2xml {
+        doLast {
+
+            copy {
+                if (csConfig.logName == null) {
+                    csConfig.logName = project.name
+                }
+
+                logger.info("csConfig.log4j2Template:" + csConfig.log4j2Template)
+                File customLog4jTemplate = null
+                if (csConfig.log4j2Template?.trim()) {
+                    customLog4jTemplate = rootProject.file(csConfig.log4j2Template)
+                    if (customLog4jTemplate.exists()) {
+                        logger.info('using custom log4j2 template:' + customLog4jTemplate.absolutePath)
+                    }
+                }
+
+                if (customLog4jTemplate == null || !customLog4jTemplate.exists()) {
+                    if (customLog4jTemplate != null) {
+                        logger.warn('custom log4j2 template NOT exist:' + customLog4jTemplate.absolutePath + ' fall back to main/resources/log4j2.template.xml')
+                    }
+                    customLog4jTemplate = file('src/main/resources/log4j2.template.xml')
+                }
+
+                from customLog4jTemplate
+
+                into file('src/main/resources')
+                rename { 'log4j2.xml' }
+                filter { String line ->
+                    csConfig.each {
+                        line = line.replaceAll("\\\$\\{" + it.key + "\\}", it.value)
+                    }
+                    line = line.replaceAll("\\\$\\{logName\\}", csConfig.logName)
+                    return line
+                }
+            }
+        }
+    }
+    tasks.compileJava.dependsOn filterLog4j2xml
+
+    task buildDocker(type: Docker, dependsOn: bootRepackage) {
+
+        maintainer = 'CustomShow Engineering "engineering@cs.cc"'
+
+        push = Boolean.parseBoolean(csConfig.pushDockerImage)
+
+        applicationName = jar.baseName
+        dockerfile = project.file('build/docker/Dockerfile')
+        tag = (push ? (csConfig.dockerRegistryPush + '/') : '') + "${csConfig.dockerImagePath}/${applicationName}".toLowerCase()
+        tagVersion = "${csConfig.csVersionBuildRBStr}"
+
+        doFirst {
+            if (Boolean.parseBoolean(csConfig.pushDockerImage)) {
+                String cmdLine = "docker login ${csConfig.dockerRegistryPush} -u ${csConfig.dockerRegistryUsername} -p ${csConfig.dockerRegistryPassword} "
+                def process = cmdLine.execute()
+                process.waitFor()
+                if (process.exitValue()) {
+                    throw new GradleException("Docker execution failed\nCommand line [${cmdLine}] returned:\n${process.err.text}")
+                }
+            }
+            copy {
+                from jar
+                into stageDir
+            }
+
+            copy {
+                File dockerFile = project.file("src/main/docker/Dockerfile")
+                if (!dockerFile.exists()) {
+                    dockerFile = parent.file('default_dockerfile')
+                }
+                from dockerFile
+                into 'build/docker'
+                rename { 'Dockerfile' }
+                filter { String line ->
+                    csConfig.each {
+                        line = line.replaceAll("\\\$\\{" + it.key + "\\}", it.value)
+                    }
+
+                    line = line.replaceAll("\\\$\\{projectJarFile\\}", jar.archiveName)
+                    return line
+                }
+            }
+
+            project.fileTree("src/main/resources").include("*-es-index-settings-ma.json").each {
+                csConfig[it.name] = it.text
+            }
+        }
+
+        doLast {
+            println "tag>>>>>>" + tag
+        }
+    }
+
+    task runDocker {
+        String containerName = project.name + "--${csConfig.csVersionBuildRBStr}"
+
+        doFirst {
+            String cmdLine = "docker ps -aqf name=" + project.name
+            Process process = cmdLine.execute()
+
+            StringBuffer sbout = new StringBuffer()
+            StringBuffer sberr = new StringBuffer()
+
+            process.waitForProcessOutput(sbout, sberr)
+
+            String existingContainer = sbout.toString()
+            if (existingContainer?.trim()) {
+                println "Existing container: " + existingContainer + " found for: " + project.name
+                process = ("docker stop " + existingContainer).execute()
+                process.waitFor()
+                println existingContainer + " stopped"
+                process = ("docker rm " + existingContainer).execute()
+                process.waitFor()
+                println existingContainer + " removed"
+            }
+
+            String existingError = sberr.toString()
+            if (existingError.length() > 0) {
+                throw new Error(existingError)
+            }
+            else{
+                println "~~~~~"
+            }
+
+        }
+        doLast {
+            String portMapStr = ""
+            if (project.ext.debugRemotePort > 1024) {
+                portMapStr += " -p ${project.ext.debugRemotePort}:${project.ext.debugRemotePort} "
+            }
+            if (project.ext.dockerMappingPorts?.trim()) {
+                portMapStr += project.ext.dockerMappingPorts.split(",").collect { " -p " + it + ":" + it }.join(" ")
+            }
+            if (project.ext.jmxRemotePort > 1024) {
+                portMapStr += " -p " + project.ext.jmxRemotePort + ":" + project.ext.jmxRemotePort
+            }
+
+            def buildEnvPath = 'build/docker-env-file.properties'
+            def buildEnvFile = project.file(buildEnvPath)
+            buildEnvFile.text = csConfig.collect { it.key + "=" + it.value }.join(System.lineSeparator())
+
+
+            String cfgEnvPairStr = "--env-file " + buildEnvFile.absolutePath
+
+            String jOpts = getJavaOptsEnvStr(project)
+            if (jOpts?.trim()) {
+                cfgEnvPairStr += " -e \"JAVA_OPTS=" + jOpts + "\""
+            }
+            String cmdLine = "docker run --name " + containerName + " " + cfgEnvPairStr + " " + portMapStr + " " + buildDocker.tag
+            println "run container ${buildDocker.tag} with cmd:\n*****cmd-start******\n\n${cmdLine}\n\n*****cmd-end******\n"
+
+
+            StringBuffer sbout = new StringBuffer()
+            StringBuffer sberr = new StringBuffer()
+
+            Process process = cmdLine.execute()
+            process.waitForProcessOutput(sbout, sberr)
+
+            println ">>>>>>>>>>>>>>>"
+            sbout.toString().eachLine { println it }
+            println "-----------------------"
+            sberr.toString().eachLine { println it }
+            println "<<<<<<<<<<<<<<<"
+
+            if (process.exitValue()) {
+                println("**** docker failed ****")
+                sberr.toString().eachLine { println it }
+                throw new GradleException("Docker execution failed\nCommand line [${cmdLine}] returned: ${process.exitValue()}\n${sberr.toString()}")
+            }
+        }
+    }
+    runDocker.dependsOn buildDocker
+
+    task createEcsTaskDef(type: CreateEcsTaskDefinition, dependsOn: buildDocker) {
+        CreateEcsTaskDefinition.ContainerModel c = new CreateEcsTaskDefinition.ContainerModel();
+        containerList = [c]
+        doFirst {
+            c.image = buildDocker.tag.replace(csConfig.dockerRegistryPush, csConfig.dockerRegistryPull)
+
+            Map<String, String> cfgMap = csConfig.clone()
+
+
+//            String jOpts = getJavaOptsEnvStr( project ) + " -XX:MaxRAM=" + c.memoryLimit + "m "
+//            cfgMap.put( "JAVA_OPTS", jOpts )
+            String jOpts = getJavaOptsEnvStr(project)
+            if (jOpts?.trim()) {
+                cfgMap.put("JAVA_OPTS", jOpts)
+            }
+            c.envVarMappings = cfgMap
+
+            Map<Integer, Integer> ptMp = new HashMap<>()
+
+            if (project.ext.dockerMappingPorts?.trim()) {
+                String mappingPorts = project.ext.dockerMappingPorts
+                ptMp = mappingPorts.split(",").collectEntries {
+                    [(Integer.parseInt(it)): it]
+                }
+            }
+
+            if (project.ext.debugRemotePort > 1024) {
+                ptMp.put(project.ext.debugRemotePort, project.ext.debugRemotePort)
+            }
+            if (project.ext.jmxRemotePort > 1024 && project.ext.domainName?.trim()) {
+                ptMp.put(project.ext.jmxRemotePort, project.ext.jmxRemotePort)
+            }
+            c.portMappings = ptMp
+
+            if (project.ext.domainName?.trim()) {
+                domainName = project.ext.domainName
+            }
+        }
+        taskDefName = csConfig.ecsClusterName + "--" + project.name
+
+        awsS3ConfigBucket = csConfig.awsS3ConfigBucket
+
+        increaseRevisionOnExist = true
+        awsLogsGroup = csConfig.ecsLogsGroup
+        awsLogsStreamPrefix = "/ecs/task/" + taskDefName
+    }
+
+    task startEcsService(type: StartEcsService, dependsOn: [createEcsAutoScaleLaunchConfig, createEcsTaskDef]) {
+        doFirst {
+            taskDefName = createEcsTaskDef.taskDefName
+            taskDefinitionArn = createEcsTaskDef.taskDefinitionArn
+        }
+        ecsClusterName = csConfig.ecsClusterName
+        count = 1
+    }
+
+
+    //only when not local debugging
+    if (project.ext.debugRemotePort < 1024 && csConfig.pushDockerImage?.trim() && Boolean.parseBoolean(csConfig.pushDockerImage)) {
+        def bootTasks = rootProject.project(":java_springboots").tasks
+        startEcsService.dependsOn bootTasks.startRedisEcsService
+        startEcsService.dependsOn bootTasks.startElasticSearchEcsService
+        startEcsService.dependsOn bootTasks.startMySQLEcsService
+    }
+
+}
+
+/**
+ * what to deploy*/
+task deploySlideResourceIndexing {
+    doLast {
+
+        AWSLogsClient logsClient = new AWSLogsClient(new DefaultAWSCredentialsProviderChain())
+        logsClient.setRegion(RegionUtils.getRegion(csConfig.aws_region))
+
+        if (csConfig.ecsLoggingToKinesis == 'true') {
+
+            logsClient.
+                    putSubscriptionFilter(new PutSubscriptionFilterRequest().withLogGroupName(csConfig.ecsLogsGroup).
+                            withFilterName("NoFilter").withFilterPattern("").
+                            withDestinationArn(csConfig.loggingKinesisStreamArn).
+                            withRoleArn(csConfig.loggingKinesisRoleArn))
+        } else {
+            logsClient.deleteSubscriptionFilter(new DeleteSubscriptionFilterRequest().withLogGroupName(csConfig.ecsLogsGroup).
+                    withFilterName("NoFilter"))
+
+        }
+
+        println "deployed"
+    }
+}
+deploySlideResourceIndexing.dependsOn project("searchQueryNvMySQL").startEcsService
+deploySlideResourceIndexing.dependsOn project("searchIndexingNvMySQL").startEcsService

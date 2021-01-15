@@ -1,0 +1,5 @@
+dependencies {
+    compile group: 'org.javasimon', name: 'javasimon-core', version: '4.1.0'
+    compile "org.springframework.data:spring-data-elasticsearch:2.0.6.RELEASE"
+    compile "com.amazonaws:aws-java-sdk-dynamodb:$awsSdkVersion"
+}

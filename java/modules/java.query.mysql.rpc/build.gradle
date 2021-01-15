@@ -1,0 +1,6 @@
+
+dependencies {
+    compile project( ':java_modules:java.query.mysql' )
+    compile "org.springframework:spring-web:$springVersion"
+    compile "org.springframework.integration:spring-integration-http:$springIntegrationVersion"
+}

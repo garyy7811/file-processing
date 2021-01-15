@@ -1,0 +1,240 @@
+apply from: '../gradle/java.gradle'
+
+apply plugin: 'jp.classmethod.aws.s3'
+
+buildscript {
+    repositories {
+        mavenCentral()
+        jcenter()
+    }
+
+    dependencies {
+        classpath "jp.classmethod.aws:gradle-aws-plugin:$jpClassmethodGradlePluginVersion"
+    }
+}
+
+/**
+ * CreateDynamoTableTask will scan projects for @DynamoDBTable, once found, it will look into classToTableName4Capacities map
+ * with classname, once found the value,
+ * classToTableName4Capacities's value means tableName|tableReadProvision|tableWriteProvision|globalIndexReadProvision|globalIndexWriteProvision
+ * */
+task createDynaTables( type: CreateDynamoTableTask ) {
+    awsRegion = csConfig.aws_region
+
+    javaSourceProjects = [project( ':java_modules:java.aws.utils' ),
+                          project( ':java_modules:java.login.verify' ),
+                          project( ':java_modules:java.awsS3Download' ),
+                          project( ':java_modules:java.awsS3Upload' ),
+                          project( ':java_modules:java.config.per.client' ),
+                          project( ':java_modules:java.videotranscoding' ),
+                          project( ':java_modules:java.migration.utils' )]
+
+    classToTableName4Capacities =
+            ["com.customshow.loginverify.DynaLogInSessionInfo"          : csConfig.awsLoginVerificationDynamoTablename +
+                    "|7|7|7|7",
+             "com.customshow.awsS3Upload.DynaTableAwsS3Upload"          : csConfig.awsS3UploadDynamoTablename +
+                     "|7|7|7|7",
+             "com.customshow.configPerClient.DynaTableClientConfig"     : csConfig.awsConfigPerClientDynamoTablename +
+                     "|7|7|7|7",
+             "com.customshow.videotranscoding.DynaTableVideoTranscoding": csConfig.awsTranscodingDynamoTablename +
+                     "|7|7|7|7",
+             "com.customshow.awsS3Download.DynaTableNVResource"         : csConfig.awsS3DownloadDynamoTablename +
+                     "|7|7|7|7",
+             "com.customshow.awsutils.S3ObjectDetails"                  : csConfig.awsS3IndexDynamoTablename +
+                     "|10|20|7|7",
+             "com.customshow.migrationutils.MigrationErrorRecord"       : csConfig.awsMigrateResourceErrorsTableName +
+                     "|10|20|7|7"]
+    exitOnError = false
+    secondsToWaitForActive = 77L
+}
+
+
+import com.amazonaws.auth.DefaultAWSCredentialsProviderChain
+import com.amazonaws.services.s3.AmazonS3Client
+import com.amazonaws.auth.BasicAWSCredentials
+import com.amazonaws.regions.RegionUtils
+import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClient
+import com.amazonaws.services.dynamodbv2.model.AttributeValue
+import com.amazonaws.services.dynamodbv2.model.KeySchemaElement
+import com.amazonaws.services.sqs.AmazonSQSClient
+import com.amazonaws.services.sqs.model.CreateQueueResult
+import org.pubanatomy.awsUtils.CreateDynamoTableTask
+import org.pubanatomy.awsUtils.ReplicDynamoToESIndexTypesTask
+
+task createSQS {
+    doLast {
+        if( !csConfig.resourceStatusQueueUrl.startsWith( "http" ) ){
+            CreateQueueResult rslt = new AmazonSQSClient().withRegion( RegionUtils.getRegion( csConfig.aws_region ) ).
+                    createQueue( csConfig.resourceStatusQueueName )
+
+            csConfig.resourceStatusQueueUrl = rslt.queueUrl
+        }
+    }
+}
+
+task createS3Buckets{
+    doFirst {
+        AmazonS3Client s3Client = new AmazonS3Client( new DefaultAWSCredentialsProviderChain() )
+        if( !s3Client.doesBucketExist( csConfig.awsS3ConfigBucket ) ){
+            s3Client.createBucket( csConfig.awsS3ConfigBucket, RegionUtils.getRegion( csConfig.aws_region ) )
+        }
+        if( !s3Client.doesBucketExist( csConfig.awsS3UploadBucket ) ){
+            s3Client.createBucket( csConfig.awsS3UploadBucket, RegionUtils.getRegion( csConfig.aws_region ) )
+        }
+        if( !s3Client.doesBucketExist( csConfig.awsS3DownloadBucket ) ){
+            s3Client.createBucket( csConfig.awsS3DownloadBucket, RegionUtils.getRegion( csConfig.aws_region ) )
+        }
+    }
+}
+
+
+
+import org.pubanatomy.awsUtils.CreateCloudFrontDistributions
+
+if( csConfig.build_aws_s3_web_distributionId != null && csConfig.awsS3UploadBucketDistributionId != null &&
+        csConfig.awsS3DownloadBucketDistributionId != null ){
+    task createUploadBucketDistribution( type: CreateCloudFrontDistributions, dependsOn: createS3Buckets ) {
+        awsRegion = csConfig.aws_region
+        s3BucketName = csConfig.awsS3UploadBucket
+        passHeadersForUpload = true
+        webDistributionId = csConfig.awsS3UploadBucketDistributionId
+        doLast {
+            csConfig.awsS3UploadUrl = 'https://' + webDistributionDomain
+            logger.info(
+                    "upload S3 bucket " + csConfig.awsS3UploadBucket + " distribution url:" + csConfig.awsS3UploadUrl )
+        }
+    }
+    task createBucketsDistribution( type: CreateCloudFrontDistributions,
+            dependsOn: createUploadBucketDistribution ) {
+        awsRegion = csConfig.aws_region
+        s3BucketName = csConfig.awsS3DownloadBucket
+        passHeadersForUpload = true
+        webDistributionId = csConfig.awsS3DownloadBucketDistributionId
+        addRtmpDistribution = true
+        secondsToWaitToBeActive = 30
+        doLast {
+            csConfig.awsS3DownloadUrl = 'https://' + webDistributionDomain
+            csConfig.awsS3RTMPUrl = 'rtmp://' + rtmpDistributionDomain
+            logger.info( "download S3 bucket " + csConfig.awsS3DownloadBucket + " web distribution url:" +
+                    csConfig.awsS3DownloadUrl + ", rtmp distribution url:" + csConfig.awsS3RTMPUrl + "---size:" +
+                    csConfig.size() )
+        }
+    }
+
+
+    task wipeoffDynatables {
+        doLast {
+
+            List<String> tablesToBeCleared = [csConfig.awsLoginVerificationDynamoTablename,
+                                              csConfig.awsConfigPerClientDynamoTablename,
+                                              csConfig.awsTranscodingDynamoTablename,
+                                              csConfig.awsS3DownloadDynamoTablename,
+                                              //                                  csConfig.awsMigrateResourceErrorsTableName,
+                                              //                                  csConfig.awsS3IndexDynamoTablename,
+                                              csConfig.awsS3UploadDynamoTablename].asList()
+
+            println "*****************************************************************************************"
+            println "*** DELETING ALL RECORDS IN " + tablesToBeCleared.join( ", " ) + "***"
+            println "*****************************************************************************************"
+            println "*** Deleting records can cause Lambda to fall into dead loop, here's a scenario:***"
+            println "*** 1)Deleting records trigger Lambda function;***"
+            println "*** 2)Lambda function can't find the deleted record and throw exception;***"
+            println "*** 3)Exception not being handled and thrown out will cause Lambda retry until events expired!!***"
+            println "*****************************************************************************************"
+
+            if( "yes" ==
+                    System.console().readLine( "\n\nType yes to continue wiping env:" + csConfig.cs_config + "\n" ) ){
+                AmazonDynamoDBClient dynaClient = new AmazonDynamoDBClient(
+                        new BasicAWSCredentials( csConfig.build_aws_access_key_id,
+                                csConfig.build_aws_secret_access_key ) )
+
+                tablesToBeCleared.each { tbname ->
+                    println "clearing>>>" + tbname
+                    List<KeySchemaElement> kel = dynaClient.describeTable( tbname ).getTable().getKeySchema();
+                    List<String> knms = kel.collect { it.attributeName }
+                    while( true ){
+                        def items = dynaClient.scan( tbname, knms ).items
+                        if( items.size() == 0 ){
+                            break;
+                        }
+                        println( "deleting: " + items.size() )
+                        items.each {
+                            dynaClient.deleteItem( tbname, it )
+                        }
+                    }
+                    println tbname + "<<<cleared"
+                }
+            }
+        }
+    }
+
+    task insertDebugRootLogin {
+        doLast {
+            AmazonDynamoDBClient dynaClient = new AmazonDynamoDBClient(
+                    new BasicAWSCredentials( csConfig.build_aws_access_key_id, csConfig.build_aws_secret_access_key ) )
+            dynaClient.putItem( csConfig.awsLoginVerificationDynamoTablename,
+                    ["csSessionId": new AttributeValue().withS( csConfig.integraTestCsSessionId ),
+                     "loginTime"  : new AttributeValue().withN( "123" ),
+                     "userId"     : new AttributeValue().withS( csConfig.rootUserId ),
+                     "clientId"   : new AttributeValue().withS( "1" )] )
+        }
+    }
+}
+
+
+
+def apiGatewayInvokeUrl = "https://" + csConfig.awsLambdaApiId + ".execute-api." + csConfig.aws_region +
+        ".amazonaws.com/" + csConfig.awsLambdaApiStageName
+if( csConfig.rpcCallUseApiGateWay == 'true' ){
+    if( !csConfig.swfCloudConsoleApiUrl?.trim() || !csConfig.swfCloudConsoleApiUrl.startsWith( 'https' ) ){
+        csConfig.swfCloudConsoleApiUrl = apiGatewayInvokeUrl + "/api"
+    }
+    if( !csConfig.swfReportingQuerySolrUrl?.trim() || !csConfig.swfReportingQuerySolrUrl.startsWith( 'https' ) ){
+        csConfig.swfReportingQuerySolrUrl = apiGatewayInvokeUrl + "/reporting-query"
+    }
+    if( !csConfig.swfReportingEdgeApiUrl?.trim() || !csConfig.swfReportingEdgeApiUrl.startsWith( 'https' ) ){
+        csConfig.swfReportingEdgeApiUrl = apiGatewayInvokeUrl + "/reporting-edge"
+    }
+    if( !csConfig.swfResIndexSearchUrl?.trim() || !csConfig.swfResIndexSearchUrl.startsWith( 'https' ) ){
+        csConfig.swfResIndexSearchUrl = apiGatewayInvokeUrl + "/res-index-search"
+    }
+}
+csConfig.urlCalledByEncodingCom = apiGatewayInvokeUrl + "/encoding-com/-dummy-"
+
+
+
+task replicateDynaToES( type: ReplicDynamoToESIndexTypesTask ) {
+    //make sure you want to do this and uncomment
+    //    deleteExistingIndex = true
+
+    javaSourceProjects = createDynaTables.javaSourceProjects
+
+    elasticsearchIndexName = csConfig[ 'elasticsearchIndexNameFromDynamoDB' ]
+    elasticsearchClusterNodes = csConfig[ 'build_dynamo2esElasticsearchUrl' ]
+
+    classNameToTableName =
+            ["com.customshow.videotranscoding.DynaTableVideoTranscoding": csConfig.awsTranscodingDynamoTablename,
+             "com.customshow.awsS3Upload.DynaTableAwsS3Upload"          : csConfig.awsS3UploadDynamoTablename,
+             "com.customshow.configPerClient.DynaTableClientConfig"     : csConfig.awsConfigPerClientDynamoTablename,
+             "com.customshow.awsS3Download.DynaTableNVResource"         : csConfig.awsS3DownloadDynamoTablename,
+             "com.customshow.awsutils.S3ObjectDetails"                  : csConfig.awsS3IndexDynamoTablename,
+             "com.customshow.migrationutils.MigrationErrorRecord"       : csConfig.awsMigrateResourceErrorsTableName] as Map
+}
+
+task createDynaTablesForTests( type: CreateDynamoTableTask ) {
+    awsRegion = csConfig.aws_region
+    dynamoEndpoint = csConfig.uniTestAwsDynamoDbEndpoint
+
+    javaSourceProjects = createDynaTables.javaSourceProjects
+
+    classToTableName4Capacities = createDynaTables.classToTableName4Capacities
+    exitOnError = false
+    secondsToWaitForActive = 77L
+}
+createDynaTablesForTests.dependsOn createDynaTables
+
+subprojects {
+    dependencies {
+        compile "com.amazonaws:aws-java-sdk-core:$awsSdkVersion"
+    }
+}

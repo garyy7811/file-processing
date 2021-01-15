@@ -1,0 +1,118 @@
+Content-Type: multipart/mixed; boundary="==BOUNDARY=="
+MIME-Version: 1.0
+
+--==BOUNDARY==
+Content-Type: text/cloud-boothook; charset="us-ascii"
+
+#cloud-boothook
+cloud-init-per instance docker_options echo 'OPTIONS="${OPTIONS} --insecure-registry=@@dockerRegistryPull@@"' >> /etc/sysconfig/docker
+
+yum -y install nfs-utils
+mkdir /efs
+mount @@mountEfsArgs@@ @@efsDomainName@@:/ /efs
+
+sysctl -w vm.max_map_count=262144
+echo never > /sys/kernel/mm/transparent_hugepage/enabled
+
+# add 'vm.overcommit_memory = 1' to /etc/sysctl.conf
+sysctl vm.overcommit_memory=1
+
+--==BOUNDARY==
+Content-Type: text/x-shellscript; charset="us-ascii"
+
+#!/bin/bash
+yum install -y aws-cli
+aws s3 cp s3://@@ecsEtcEcsConfigS3Path@@ /etc/ecs/ecs.config
+
+
+--==BOUNDARY==
+Content-Type: text/x-shellscript; charset="us-ascii"
+#!/bin/bash
+# Install awslogs and the jq JSON parser
+yum install -y awslogs jq
+
+# Inject the CloudWatch Logs configuration file contents
+cat > /etc/awslogs/awslogs.conf <<- EOF
+[general]
+state_file = /var/lib/awslogs/agent-state
+
+[/var/log/dmesg]
+file = /var/log/dmesg
+log_group_name = @@logGroupName@@
+log_stream_name = /ecs/container/{cluster}/{container_instance_id}/var/log/dmesg
+datetime_format = %b %d %H:%M:%S
+multi_line_start_pattern =  {datetime_format}
+
+[/var/log/messages]
+file = /var/log/messages
+log_group_name = @@logGroupName@@
+log_stream_name = /ecs/container/{cluster}/{container_instance_id}/var/log/messages
+datetime_format = %b %d %H:%M:%S
+multi_line_start_pattern =  {datetime_format}
+
+[/var/log/docker]
+file = /var/log/docker
+log_group_name = @@logGroupName@@
+log_stream_name = /ecs/container/{cluster}/{container_instance_id}/var/log/docker
+datetime_format = %Y-%m-%dT%H:%M:%S.%f
+multi_line_start_pattern =  {datetime_format}
+
+[/var/log/ecs/ecs-init.log]
+file = /var/log/ecs/ecs-init.log.*
+log_group_name = @@logGroupName@@
+log_stream_name = /ecs/container/{cluster}/{container_instance_id}/var/log/ecs/ecs-init.log
+datetime_format = %Y-%m-%dT%H:%M:%SZ
+multi_line_start_pattern =  {datetime_format}
+
+[/var/log/ecs/ecs-agent.log]
+file = /var/log/ecs/ecs-agent.log.*
+log_group_name = @@logGroupName@@
+log_stream_name = /ecs/container/{cluster}/{container_instance_id}/var/log/ecs/ecs-agent.log
+datetime_format = %Y-%m-%dT%H:%M:%SZ
+multi_line_start_pattern =  {datetime_format}
+
+[/var/log/ecs/audit.log]
+file = /var/log/ecs/audit.log.*
+log_group_name = @@logGroupName@@
+log_stream_name = /ecs/container/{cluster}/{container_instance_id}/var/log/ecs/audit.log
+datetime_format = %Y-%m-%dT%H:%M:%SZ
+multi_line_start_pattern =  {datetime_format}
+
+EOF
+
+--==BOUNDARY==
+Content-Type: text/x-shellscript; charset="us-ascii"
+#!/bin/bash
+# Set the region to send CloudWatch Logs data to (the region where the container instance is located)
+region=$(curl -s 169.254.169.254/latest/dynamic/instance-identity/document | jq -r .region)
+sed -i -e "s/region = us-east-1/region = $region/g" /etc/awslogs/awscli.conf
+
+--==BOUNDARY==
+Content-Type: text/upstart-job; charset="us-ascii"
+
+#upstart-job
+description "Configure and start CloudWatch Logs agent on Amazon ECS container instance"
+author "Amazon Web Services"
+start on started ecs
+
+script
+	exec 2>>/var/log/ecs/cloudwatch-logs-start.log
+	set -x
+
+	until curl -s http://localhost:51678/v1/metadata
+	do
+		sleep 1
+	done
+
+	# Grab the cluster and container instance ARN from instance metadata
+	cluster=$(curl -s http://localhost:51678/v1/metadata | jq -r '. | .Cluster')
+	container_instance_id=$(curl -s http://localhost:51678/v1/metadata | jq -r '. | .ContainerInstanceArn' | awk -F/ '{print $2}' )
+
+	# Replace the cluster name and container instance ID placeholders with the actual values
+	sed -i -e "s/{cluster}/$cluster/g" /etc/awslogs/awslogs.conf
+	sed -i -e "s/{container_instance_id}/$container_instance_id/g" /etc/awslogs/awslogs.conf
+
+	service awslogs start
+	chkconfig awslogs on
+end script
+--==BOUNDARY==--

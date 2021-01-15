@@ -1,0 +1,75 @@
+{
+  "query": {
+    "mediaid": "91802058",
+    "format": [
+      {
+        "identification": "default first frame",
+        "configName": "thumb root",
+        "lastModifiedTime": 0,
+        "enabled": true,
+        "time": "5%",
+        "width": "640",
+        "height": "360",
+        "output": "thumbnail",
+        "destination": "https://AKIAI5OSSQS7K27QGEMA:2soHBdIMcXX%2FoLiAvehY8YpBuwEoqTk2SPqHAXHL@cs-cloud-trunk--download.s3.amazonaws.com/video/0/1/7EFD95E20C7AE1E0B848C9D9030F8089/1481223837414/640x360_5p.jpeg",
+        "size": "640x360"
+      },
+      {
+        "identification": "default thumb",
+        "configName": "thumb root 5%",
+        "lastModifiedTime": 0,
+        "enabled": true,
+        "baseConfigId": "default first frame",
+        "time": "5%",
+        "width": "200",
+        "height": "112",
+        "output": "thumbnail",
+        "destination": "https://AKIAI5OSSQS7K27QGEMA:2soHBdIMcXX%2FoLiAvehY8YpBuwEoqTk2SPqHAXHL@cs-cloud-trunk--download.s3.amazonaws.com/video/0/1/7EFD95E20C7AE1E0B848C9D9030F8089/1481223837414/200x112_5p.jpeg",
+        "size": "200x112"
+      },
+      {
+        "identification": "default post frame",
+        "configName": "thumb root 0.02",
+        "lastModifiedTime": 0,
+        "enabled": true,
+        "baseConfigId": "default first frame",
+        "time": "0.02",
+        "width": "640",
+        "height": "360",
+        "output": "thumbnail",
+        "destination": "https://AKIAI5OSSQS7K27QGEMA:2soHBdIMcXX%2FoLiAvehY8YpBuwEoqTk2SPqHAXHL@cs-cloud-trunk--download.s3.amazonaws.com/video/0/1/7EFD95E20C7AE1E0B848C9D9030F8089/1481223837414/640x360_0_02.jpeg",
+        "size": "640x360"
+      },
+      {
+        "identification": "default video1500",
+        "configName": "default video1500",
+        "lastModifiedTime": 0,
+        "enabled": true,
+        "baseConfigId": "default video",
+        "output": "mp4",
+        "keyframe": "90",
+        "destination": "https://AKIAI5OSSQS7K27QGEMA:2soHBdIMcXX%2FoLiAvehY8YpBuwEoqTk2SPqHAXHL@cs-cloud-trunk--download.s3.amazonaws.com/video/0/1/7EFD95E20C7AE1E0B848C9D9030F8089/1481223837414/605k.mp4",
+        "audio_bitrate": "128k",
+        "audio_codec": "libfaac",
+        "audio_sample_rate": "44100",
+        "audio_volume": "100",
+        "bitrate": "605k",
+        "framerate": "29.97",
+        "hint": "no",
+        "keep_aspect_ratio": "yes",
+        "profile": "baseline",
+        "size": "640x360",
+        "turbo": "no",
+        "two_pass": "yes",
+        "video_codec": "libx264"
+      }
+    ],
+    "userid": "85296",
+    "userkey": "20d39e44aacf122ead3cba26a830c17f",
+    "action": "UpdateMedia",
+    "notify_format": "json",
+    "notify": "https://hr7fu0poyf.execute-api.us-east-1.amazonaws.com/a/encoding-com/-dummy-",
+    "notify_upload": "https://hr7fu0poyf.execute-api.us-east-1.amazonaws.com/a/encoding-com/-dummy-",
+    "notify_encoding_errors": "https://hr7fu0poyf.execute-api.us-east-1.amazonaws.com/a/encoding-com/-dummy-"
+  }
+}

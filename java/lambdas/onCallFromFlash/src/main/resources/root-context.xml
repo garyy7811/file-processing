@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:elasticsearch="http://www.springframework.org/schema/data/elasticsearch"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+            http://www.springframework.org/schema/beans/spring-beans.xsd
+            http://www.springframework.org/schema/context
+            http://www.springframework.org/schema/context/spring-context.xsd
+            http://www.springframework.org/schema/data/elasticsearch http://www.springframework.org/schema/data/elasticsearch/spring-elasticsearch.xsd"
+       default-lazy-init="true">
+
+    <context:property-placeholder/>
+
+    <context:annotation-config/>
+
+    <import resource="awsS3UploadFromClient.xml"/>
+    <import resource="awsS3Download.xml"/>
+    <import resource="config.per.client.service.xml"/>
+    <import resource="transcodingServices.xml"/>
+    <!--<import resource="mysql.remote.host.xml"/>-->
+    <import resource="login.verify.xml"/>
+
+
+    <bean class="com.flashflexpro.graniteamf.SimpleGraniteConfig">
+        <constructor-arg>
+            <bean class="org.granite.messaging.amf.io.RegexAMF3DeserializerSecurizer">
+                <property name="param"
+                          value="#{'(^com\.customshow\..+|^com\.flashflexpro\..+|^flex\.messaging\.io\..+)'}"/>
+            </bean>
+        </constructor-arg>
+    </bean>
+
+
+    <bean id="rpcServiceInvoker" class="org.pubanatomy.siutils.RPCServiceInvoker">
+        <constructor-arg>
+            <map>
+                <entry key="awsS3UploadService" value-ref="awsS3UploadService"/>
+                <entry key="awsS3DownloadService" value-ref="awsS3DownloadService"/>
+                <entry key="configPerClientService" value-ref="configPerClientService"/>
+                <entry key="transcodingService" value-ref="transcodingService"/>
+                <entry key="configPerClientService" value-ref="configPerClientService"/>
+                <entry key="logging">
+                    <bean class="org.pubanatomy.siutils.FlashLogging"/>
+                </entry>
+            </map>
+        </constructor-arg>
+    </bean>
+
+
+    <!--for direct uploading-->
+    <bean id="awsCredentials" class="com.amazonaws.auth.AWSStaticCredentialsProvider">
+        <constructor-arg>
+            <bean class="com.amazonaws.auth.BasicAWSCredentials">
+                <constructor-arg value="${runtimeAwsAccessKeyId}"/>
+                <constructor-arg value="${runtimeAwsSecretAccessKey}"/>
+            </bean>
+        </constructor-arg>
+    </bean>
+
+    <!-- not working for client directly upload to S3
+    <bean class="com.amazonaws.auth.DefaultAWSCredentialsProviderChain"/>-->
+
+    <bean id="s3Client" class="com.amazonaws.services.s3.AmazonS3Client">
+        <constructor-arg ref="awsCredentials"/>
+        <constructor-arg>
+            <bean class="com.amazonaws.ClientConfiguration">
+                <property name="signerOverride" value="S3SignerType"/>
+            </bean>
+        </constructor-arg>
+    </bean>
+    <bean class="com.amazonaws.services.dynamodbv2.AmazonDynamoDBClient"/>
+    <bean id="sqsClient" class="com.amazonaws.services.sqs.AmazonSQSClient"/>
+
+    <elasticsearch:transport-client id="client" client-transport-sniff="false"
+                                    cluster-name="elasticsearch" cluster-nodes="${queryElasticsearchUrl}"/>
+    <bean id="elasticsearchTemplate"
+          class="org.springframework.data.elasticsearch.core.ElasticsearchTemplate">
+        <constructor-arg name="client" ref="client"/>
+    </bean>
+
+</beans>

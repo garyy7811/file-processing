@@ -1,0 +1,5 @@
+
+ext.lambdaEnvNames.add( "aws_region" )
+ext.lambdaEnvNames.add( "awsLoginVerificationDynamoTablename" )
+ext.lambdaEnvNames.add( "awsResourceIndexEsHost" )
+ext.lambdaEnvNames.add( "awsResourceIndexName" )

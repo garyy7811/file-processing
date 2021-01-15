@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:int="http://www.springframework.org/schema/integration"
+       xmlns:int-http="http://www.springframework.org/schema/integration/http"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+            http://www.springframework.org/schema/beans/spring-beans.xsd
+            http://www.springframework.org/schema/integration
+            http://www.springframework.org/schema/integration/spring-integration.xsd
+            http://www.springframework.org/schema/integration/http
+            http://www.springframework.org/schema/integration/http/spring-integration-http.xsd"
+       default-lazy-init="true">
+
+    <import resource="encoding.com.xml"/>
+
+    <bean class="org.pubanatomy.videotranscoding.TranscodingDAO">
+        <constructor-arg value="${awsTranscodingDynamoTablename}"/>
+    </bean>
+
+    <bean id="transcodingFunctions" class="org.pubanatomy.videotranscoding.TranscodingFunctions">
+        <constructor-arg index="0" value="${urlCalledByEncodingCom}"/>
+        <constructor-arg index="1" value="${userIdForEncodingCom}"/>
+        <constructor-arg index="2" value="${userkeyForEncodingCom}"/>
+        <constructor-arg index="3" value="${awsS3DownloadBucket}"/>
+        <constructor-arg index="4" value="${awsS3DownloadBucketAccessKeyAndEncodedSecret}"/>
+        <constructor-arg index="5" value="${backToUpdateStatusInMin}"/>
+    </bean>
+
+    <int:channel id="inputUploadFileForEncoding"/>
+    <int:channel id="outputUploadFileForEncoding"/>
+    <int:service-activator input-channel="inputUploadFileForEncoding" output-channel="outputUploadFileForEncoding"
+                           ref="transcodingFunctions" method="onFileUploadReady"/>
+
+
+    <int:channel id="inputCallFromEncodingComChannel"/>
+    <int:channel id="outputCallFromEncodingComChannel"/>
+
+    <int:chain input-channel="inputCallFromEncodingComChannel" output-channel="outputCallFromEncodingComChannel">
+        <int:service-activator ref="transcodingFunctions" method="decodeEncodingCom"/>
+        <int:json-to-object-transformer type="org.pubanatomy.videotranscoding.TranscodingFunctions.Result"/>
+        <int:service-activator ref="transcodingFunctions" method="onCallFromEncodingComServer"/>
+    </int:chain>
+
+
+    <int:channel id="inputUpdateStatusChannel"/>
+    <int:channel id="outputUpdateStatusChannel"/>
+    <int:service-activator ref="transcodingFunctions" method="updateEncodingComStatusByStatus"
+                           input-channel="inputUpdateStatusChannel" output-channel="outputUpdateStatusChannel"/>
+
+</beans>

@@ -1,0 +1,8 @@
+
+ext.lambdaEnvNames.add( "aws_region" )
+ext.lambdaEnvNames.add( "awsLoginVerificationDynamoTablename" )
+ext.lambdaEnvNames.add( "awsResourceIndexEsHost" )
+ext.lambdaEnvNames.add( "awsResourceIndexName" )
+ext.lambdaEnvNames.add( "csDbHost" )
+ext.lambdaEnvNames.add( "csDbUsername" )
+ext.lambdaEnvNames.add( "csDbPassword" )

@@ -1,0 +1,241 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:p="http://www.springframework.org/schema/p"
+       xmlns:utils="http://www.springframework.org/schema/util"
+       xmlns:context="http://www.springframework.org/schema/context"
+
+       xmlns:int="http://www.springframework.org/schema/integration"
+       xmlns:int-groovy="http://www.springframework.org/schema/integration/groovy"
+       xmlns:int-redis="http://www.springframework.org/schema/integration/redis"
+       xmlns:int-jdbc="http://www.springframework.org/schema/integration/jdbc"
+       xmlns:task="http://www.springframework.org/schema/task"
+       xsi:schemaLocation="
+            http://www.springframework.org/schema/util http://www.springframework.org/schema/util/spring-util.xsd
+            http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+            http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context.xsd
+
+            http://www.springframework.org/schema/integration http://www.springframework.org/schema/integration/spring-integration.xsd
+            http://www.springframework.org/schema/integration/groovy http://www.springframework.org/schema/integration/groovy/spring-integration-groovy.xsd
+            http://www.springframework.org/schema/integration/redis http://www.springframework.org/schema/integration/redis/spring-integration-redis.xsd
+            http://www.springframework.org/schema/integration/jdbc http://www.springframework.org/schema/integration/jdbc/spring-integration-jdbc.xsd
+            http://www.springframework.org/schema/task http://www.springframework.org/schema/task/spring-task.xsd">
+
+    <context:property-placeholder/>
+
+    <bean id="redisConnectionFactory" class="org.springframework.data.redis.connection.jedis.JedisConnectionFactory"
+          p:host-name="${ecsRedisDomainName}" p:port="6379"/>
+    <bean p:connectionFactory-ref="redisConnectionFactory"
+          class="org.springframework.data.redis.core.StringRedisTemplate"/>
+
+    <bean class="com.fasterxml.jackson.databind.ObjectMapper" id="objectMapper"/>
+    <bean class="org.pubanatomy.search.indexing.OutToElasticsearch" id="outToElasticsearch">
+        <constructor-arg value="${elasticsearchRESTURLs}"/>
+        <constructor-arg value="${searchIndexName}"/>
+    </bean>
+    <bean class="org.pubanatomy.search.indexing.BackToRedisQueue" id="backToRedisQueue">
+        <constructor-arg value="${searchIndexingRedisQueue}"/>
+        <constructor-arg value="${listChangedResMaxRowsPerPoll}"/>
+        <constructor-arg value="${listChangedFolderMaxRowsPerPoll}"/>
+        <constructor-arg value="${searchIndexingRetryTimes}"/>
+        <constructor-arg value="${searchIndexingRedoAfterQueuingSeconds}"/>
+        <constructor-arg value="${searchIndexingGiveupAfterQueuingSeconds}"/>
+        <constructor-arg value="${indexFolderRecursively}"/>
+    </bean>
+
+    <bean id="dataSource" class="org.apache.commons.dbcp2.BasicDataSource" destroy-method="close">
+        <property name="driverClassName" value="com.mysql.jdbc.Driver"/>
+        <property name="url" value="jdbc:mysql://${ecsMySqlDomainName}/Magnet"/>
+        <property name="username" value="${ecsMySQLUser}"/>
+        <property name="password" value="${ecsMySQLPass}"/>
+    </bean>
+
+    <bean id="nvJdbcTemplate" name="newVictoryMySQL" class="org.springframework.jdbc.core.JdbcTemplate"
+          p:dataSource-ref="dataSource"/>
+
+    <bean id="transactionManager" class="org.pubanatomy.search.indexing.EsTransactionManager"
+          p:rollbackOnCommitFailure="true"/>
+
+    <int:chain input-channel="updateAfterRollback" output-channel="outToQueueStr" id="updateAfterRollback_outToQueueStr">
+        <int:filter ref="backToRedisQueue" method="backToRedisAfterRollback" id="rollbackFilter"/>
+        <int:splitter ref="backToRedisQueue" method="splitIntoMultiLst" id="rollbackSplitter"/>
+    </int:chain>
+
+    <int:inbound-channel-adapter id="pullingFromRedis" auto-startup="${resIndexAutoStartup}" channel="strFromRedisQueue"
+                                 ref="backToRedisQueue" method="pickUUIDListFromRedis">
+        <int:poller fixed-delay="${indexingPollingFixDelay}" max-messages-per-poll="1"/>
+    </int:inbound-channel-adapter>
+
+    <bean id="stringRedisSerializer" class="org.springframework.data.redis.serializer.StringRedisSerializer"/>
+
+    <int:channel id="strFromRedisQueue">
+        <int:queue ref="synchronousQueue"/>
+    </int:channel>
+    <bean id="synchronousQueue" class="java.util.concurrent.SynchronousQueue"/>
+
+    <int:transformer id="stringToObjectTransformer" input-channel="strFromRedisQueue" output-channel="objFromQueue" ref="backToRedisQueue"
+                     method="rawInputStrToUuidLstTypeAndInputSize">
+        <int:poller fixed-delay="1" max-messages-per-poll="1" task-executor="pollerTaskExecutor" receive-timeout="9999">
+            <int:transactional synchronization-factory="txSyncFactory" isolation="REPEATABLE_READ"
+                               timeout="${pollerTranxTimeoutSecs}"/>
+        </int:poller>
+    </int:transformer>
+
+    <task:executor id="pollerTaskExecutor" queue-capacity="3" rejection-policy="CALLER_RUNS"/>
+
+    <int:transaction-synchronization-factory id="txSyncFactory">
+        <int:after-commit channel="updateAfterCommit"/>
+        <int:after-rollback channel="updateAfterRollback"/>
+    </int:transaction-synchronization-factory>
+    <int:channel id="updateAfterCommit"/>
+    <int:outbound-channel-adapter channel="updateAfterCommit" ref="backToRedisQueue" method="updateAfterCommit"/>
+
+    <int:router id="routingByType" input-channel="objFromQueue" expression="payload.type">
+        <int:mapping value="listChangedResTime" channel="changeResUuidLstAndType"/>
+        <int:mapping value="listChangedFolderTime" channel="changeFolderUuidLstAndType"/>
+        <int:mapping value="listDeletedResTime" channel="deletedByUUidLstAndType"/>
+        <int:mapping value="listDeletedFolderTime" channel="deletedByUUidLstAndType"/>
+    </int:router>
+
+    <int:transformer id="delByUUidTransformer" input-channel="deletedByUUidLstAndType" expression="payload.uuidLst"
+                     output-channel="delItemsUuidLst"/>
+
+    <int:channel id="delItemsUuidLst"/>
+    <int:outbound-channel-adapter id="deleteESItems" channel="delItemsUuidLst" ref="outToElasticsearch"
+                                  method="delItemsUuidLst"/>
+
+    <int:chain input-channel="changeResUuidLstAndType" output-channel="lstOfResItemWithSameFolderId" id="changeResUuidLstAndType_lstOfResItemWithSameFolderId">
+        <int:transformer id="changeResUUIDTransformer" expression="payload.uuidLst"/>
+        <int-jdbc:outbound-gateway id="indexResRecord_sql" query="${indexResRecord_sql}" max-rows-per-poll="0"
+                                   data-source="dataSource" row-mapper="recordRowMapper"
+                                   reply-timeout="${indexResRecordSQLTimeoutMilsecs}"
+                                   reply-sql-parameter-source-factory="parameterSourceFactory"/>
+        <int:splitter id="resItemGroupByFolderId" ref="recordRowMapper" method="groupByFolderId"/>
+    </int:chain>
+    <bean id="recordRowMapper" class="org.pubanatomy.search.indexing.ResourceRecordMapper"/>
+
+    <int:publish-subscribe-channel id="lstOfResItemWithSameFolderId"/>
+
+
+    <int:chain input-channel="lstOfResItemWithSameFolderId" output-channel="itemLstWithSameFolderIdAndPaths" id="lstOfResItemWithSameFolderId_itemLstWithSameFolderIdAndPaths">
+        <int:transformer>
+            <int-groovy:script>
+            <![CDATA[
+                payload.get( 0 ).folderId
+                ]]>
+        </int-groovy:script>
+        </int:transformer>
+        <int-jdbc:outbound-gateway id="resIndexFolderPathById_sql" query="${indexFolderPathById_sql}"
+                                   max-rows-per-poll="0"
+                                   data-source="dataSource" row-mapper="pathMapper"
+                                   reply-timeout="${indexFolderPathByIdSQLTimeoutMilsecs}"
+                                   reply-sql-parameter-source-factory="parameterSourceFactory"/>
+
+        <int:transformer id="resFolderArrToPaths" ref="pathMapper" method="folderArrToPath"/>
+    </int:chain>
+    <bean id="pathMapper" class="org.pubanatomy.search.indexing.PathMapper"/>
+
+
+    <int:bridge input-channel="lstOfResItemWithSameFolderId" output-channel="itemLstWithSameFolderIdAndPaths"/>
+
+
+    <int:aggregator id="itemAggPath" input-channel="itemLstWithSameFolderIdAndPaths"
+                    output-channel="esItemLstFolderLstMix" correlation-strategy="recordRowMapper"
+                    release-strategy="recordRowMapper"
+                    expire-groups-upon-completion="true"
+                    expire-groups-upon-timeout="true"
+                    send-partial-result-on-expiry="true"
+                    group-timeout="${resIndexPathAggTimeoutMilsecs}"/>
+
+
+
+    <int:chain input-channel="changeFolderUuidLstAndType" output-channel="lstOfFolderItemWithSameFolderId" id="changeFolderUuidLstAndType_lstOfFolderItemWithSameFolderId">
+        <int:transformer id="changeFolderUuidTransformer" expression="payload.uuidLst"/>
+        <int-jdbc:outbound-gateway id="indexFolderRecord_sql" query="${indexFolderRecord_sql}" max-rows-per-poll="0"
+                                   data-source="dataSource" row-mapper="folderRowMapper"
+                                   reply-timeout="${indexFolderRecordSQLTimeoutMilsecs}"
+                                   reply-sql-parameter-source-factory="parameterSourceFactory"/>
+        <int:splitter id="folderItemGroupByFolderId" ref="folderRowMapper" method="groupByFolderId"/>
+    </int:chain>
+    <bean id="folderRowMapper" class="org.pubanatomy.search.indexing.FolderRecordMapper"/>
+
+    <int:publish-subscribe-channel id="lstOfFolderItemWithSameFolderId"/>
+
+    <int:bridge input-channel="lstOfFolderItemWithSameFolderId" output-channel="itemLstWithSameFolderIdAndPaths"/>
+
+
+    <int:chain input-channel="lstOfFolderItemWithSameFolderId" output-channel="outToQueueStr" id="lstOfFolderItemWithSameFolderId_outToQueueStr">
+        <int:transformer id="itemLstToUUidLst" ref="backToRedisQueue" method="filterRecursiveFolderUUIDs"/>
+        <int:filter expression="payload.size()>0"/>
+        <int-jdbc:outbound-gateway id="listSubFolderUuids_sql" query="${listSubFolderUUids_sql}" max-rows-per-poll="0"
+                                   data-source="dataSource" requires-reply="false"
+                                   reply-timeout="${listSubFolderUUidsSQLTimeoutMilsecs}"
+                                   reply-sql-parameter-source-factory="parameterSourceFactory"/>
+        <int:splitter ref="backToRedisQueue" method="splitSubFolderLst"/>
+        <int:transformer ref="backToRedisQueue" method="folderIds"/>
+    </int:chain>
+
+    <int:chain input-channel="lstOfFolderItemWithSameFolderId" output-channel="outToQueueStr" id="lstOfFolderItemWithSameFolderId_outToQueueStr">
+        <int:transformer id="itemLstToUUidLst" ref="backToRedisQueue" method="filterRecursiveFolderUUIDs"/>
+        <int:filter expression="payload.size()>0"/>
+        <int-jdbc:outbound-gateway id="listSubResUUids_sql" query="${listSubResUUids_sql}" max-rows-per-poll="0"
+                                   data-source="dataSource" requires-reply="false"
+                                   reply-timeout="${listSubResUUidsSQLTimeoutMilsecs}"
+                                   reply-sql-parameter-source-factory="parameterSourceFactory"/>
+        <int:splitter ref="backToRedisQueue" method="splitSubResLst"/>
+        <int:transformer ref="backToRedisQueue" method="resIds"/>
+    </int:chain>
+
+
+    <int:filter id="outToQueueStrNoNullFilter" input-channel="outToQueueStr" output-channel="outToQueueStrNoNull"
+                expression="payload!=null"/>
+    <int:channel id="outToQueueStrNoNull"/>
+    <int-redis:queue-outbound-channel-adapter id="redisOutboundAdapter" channel="outToQueueStrNoNull"
+                                              queue="${searchIndexingRedisQueue}" serializer="stringRedisSerializer"/>
+
+
+    <int:chain input-channel="lstOfFolderItemWithSameFolderId" output-channel="itemLstWithSameFolderIdAndPaths" id="lstOfFolderItemWithSameFolderId_itemLstWithSameFolderIdAndPaths">
+        <int:transformer>
+            <int-groovy:script>
+            <![CDATA[
+                payload.get( 0 ).folderId
+                ]]>
+        </int-groovy:script>
+        </int:transformer>
+        <int-jdbc:outbound-gateway id="folderIndexFolderPathById_sql" query="${indexFolderPathById_sql}"
+                                   max-rows-per-poll="0" reply-timeout="${indexFolderPathByIdSQLTimeoutMilsecs}"
+                                   data-source="dataSource" row-mapper="pathMapper"
+                                   reply-sql-parameter-source-factory="parameterSourceFactory"/>
+        <int:transformer id="folderArrToPaths" ref="pathMapper" method="folderArrToPath"/>
+    </int:chain>
+
+
+    <int:chain input-channel="esItemLstFolderLstMix" output-channel="esItemLst" id="esItemLstFolderLstMix_esItemLst">
+        <int:splitter/>
+        <int:filter expression="payload instanceof T(java.util.List)"/>
+    </int:chain>
+    <int:channel id="esItemLst"/>
+    <int:outbound-channel-adapter id="addToEs" channel="esItemLst" ref="outToElasticsearch" method="items"/>
+
+    <bean id="parameterSourceFactory"
+          class="org.springframework.integration.jdbc.ExpressionEvaluatingSqlParameterSourceFactory">
+        <property name="parameterExpressions">
+            <utils:map>
+                <entry key="folderUuidLst" value="payload"/>
+                <entry key="folderUuid" value="payload"/>
+                <entry key="folderId" value="payload"/>
+                <entry key="resUuidLst" value="payload"/>
+                <entry key="resUuid" value="payload"/>
+            </utils:map>
+        </property>
+    </bean>
+
+
+    <int:channel id="errorChannel"/>
+    <int:outbound-channel-adapter channel="errorChannel" ref="backToRedisQueue" method="onError"/>
+
+    <int:wire-tap channel="loggingChannel" pattern="outToQueueStrNoNull"/>
+    <int:channel id="loggingChannel"/>
+    <int:outbound-channel-adapter channel="loggingChannel" ref="backToRedisQueue" method="onLogging"/>
+
+</beans>

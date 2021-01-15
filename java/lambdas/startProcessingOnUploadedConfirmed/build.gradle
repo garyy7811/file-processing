@@ -1,0 +1,66 @@
+import org.pubanatomy.awsUtils.AddDynamoTriggerToLambda
+
+mainClassName = "com.customshow.lambda.StartProcessingOnUploaded"
+
+dependencies {
+
+    compile project( ':java_modules:java.videotranscoding' )
+    compile project( ':java_modules:java.awsS3Download' )
+    compile project( ':java_modules:java.processImgFla' )
+}
+
+
+configurations {
+    compile.exclude module: "elasticsearch"
+    compile.exclude module: "aws-java-sdk-cloudfront"
+    compile.exclude module: "aws-java-sdk-elastictranscoder"
+    compile.exclude module: "aws-java-sdk-kinesis"
+//    compile.exclude module: "aws-java-sdk-sqs"
+}
+
+if( tasks.hasProperty( "migrateFunction" ) ){
+    /*
+    * example usage
+    * tableNameToSizeTypePosition is a map, tablename is the key,
+    * value can be empty string which means add all events as triggers or BatchSize, streamType,
+    * and starting position separated by "|"
+    *
+    * '100|NEW_AND_OLD_IMAGES|TRIM_HORIZON'
+    *
+    * */
+    task addDynaLambdaTriggers( type: AddDynamoTriggerToLambda ) {
+        awsRegion = csConfig.aws_region
+        lambdaFunctionName = csConfig.awsLambdaFunctionName
+        tableNameToSizeTypePosition = ["$csConfig.awsS3UploadDynamoTablename": ""]
+    }
+
+    addDynaLambdaTriggers.dependsOn rootProject.project( ":java_modules" ).tasks.createDynaTables
+    addDynaLambdaTriggers.dependsOn migrateFunction
+
+    deployFunctionWithTriggers.dependsOn addDynaLambdaTriggers
+
+}
+
+processResources.dependsOn rootProject.project( ":java_modules" ).tasks.createSQS
+
+test.dependsOn rootProject.project( ":java_modules" ).tasks.createDynaTablesForTests
+
+ext.lambdaEnvNames.add( "urlCalledByEncodingCom" )
+ext.lambdaEnvNames.add( "userIdForEncodingCom" )
+ext.lambdaEnvNames.add( "userkeyForEncodingCom" )
+ext.lambdaEnvNames.add( "encodingComApiUrl" )
+ext.lambdaEnvNames.add( "encodingComApiTimeout" )
+ext.lambdaEnvNames.add( "awsTranscodingDynamoTablename" )
+ext.lambdaEnvNames.add( "awsS3UploadDynamoTablename" )
+ext.lambdaEnvNames.add( "awsS3DownloadBucket" )
+ext.lambdaEnvNames.add( "awsS3DownloadDynamoTablename" )
+ext.lambdaEnvNames.add( "awsConfigPerClientDynamoTablename" )
+ext.lambdaEnvNames.add( "backToUpdateStatusInMin" )
+ext.lambdaEnvNames.add( "resourceStatusQueueUrl" )
+ext.lambdaEnvNames.add( "awsS3DownloadBucketAccessKeyAndEncodedSecret" )
+ext.lambdaEnvNames.add( "rootUserId" )
+ext.lambdaEnvNames.add( "awsS3UploadBucket" )
+ext.lambdaEnvNames.add( "awsS3UploadUrl" )
+ext.lambdaEnvNames.add( "awsLoginVerificationDynamoTablename" )
+ext.lambdaEnvNames.add( "uploadImgThumbMaxSize" )
+ext.lambdaEnvNames.add( "awsS3DownloadUrl" )

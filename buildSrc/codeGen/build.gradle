@@ -1,0 +1,16 @@
+dependencies {
+
+    compile 'com.flashflexpro:simple-amf-all:0.0.1'
+    compile 'com.customshow:java.sif.utils:0.0.4'
+
+    compile "commons-io:commons-io:2.4"
+    compile "org.apache.httpcomponents:httpclient:4.3.1"
+    compile "org.apache.httpcomponents:httpcore:4.3"
+    compile "org.apache.httpcomponents:httpmime:4.3.1"
+    compile( "org.apache.zookeeper:zookeeper:3.4.6" ) {
+        exclude group: 'log4j', module: 'log4j'
+        exclude group: 'org.slf4j', module: 'slf4j-log4j12'
+    }
+    compile "org.codehaus.woodstox:woodstox-core-asl:4.4.1"
+    compile "org.apache.solr:solr-solrj:5.1.0"
+}

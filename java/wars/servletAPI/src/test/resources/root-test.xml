@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:int="http://www.springframework.org/schema/integration"
+       xmlns:int-http="http://www.springframework.org/schema/integration/http"
+       xmlns:int-groovy="http://www.springframework.org/schema/integration/groovy"
+       xmlns:cache="http://www.springframework.org/schema/cache"
+       xmlns:elasticsearch="http://www.springframework.org/schema/data/elasticsearch"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+            http://www.springframework.org/schema/beans/spring-beans.xsd
+            http://www.springframework.org/schema/context
+            http://www.springframework.org/schema/context/spring-context.xsd
+            http://www.springframework.org/schema/integration/http
+            http://www.springframework.org/schema/integration/http/spring-integration-http.xsd
+            http://www.springframework.org/schema/integration/groovy
+            http://www.springframework.org/schema/integration/groovy/spring-integration-groovy.xsd
+            http://www.springframework.org/schema/cache
+            http://www.springframework.org/schema/cache/spring-cache.xsd http://www.springframework.org/schema/data/elasticsearch http://www.springframework.org/schema/data/elasticsearch/spring-elasticsearch.xsd">
+    <context:property-placeholder location="classpath:test-config.properties"/>
+    <context:annotation-config/>
+
+    <import resource="awsS3UploadFromClient.xml"/>
+    <import resource="awsS3Download.xml"/>
+    <import resource="config.per.client.service.xml"/>
+    <import resource="transcodingServices.xml"/>
+
+
+    <!-- ******************************* -->
+    <bean class="org.pubanatomy.loginverify.DynaLogInSessionInfo" id="mockingDynaLogInSessionInfo">
+        <property name="csSessionId" value="fakecsSessionId"/>
+        <property name="clientId" value="fakecs clientId"/>
+        <property name="userId" value="fakecs user Id"/>
+        <property name="loginTime" value="-1284"/>
+    </bean>
+
+    <bean id="queryService" class="org.pubanatomy.test.unit.DynamoLoginInfoFuncsMock">
+        <constructor-arg value="asdf"/>
+    </bean>
+
+    <bean class="com.amazonaws.auth.BasicAWSCredentials" id="basicAWSCredentials">
+        <constructor-arg value="${build_aws_access_key_id}"/>
+        <constructor-arg value="${build_aws_secret_access_key}"/>
+    </bean>
+    <bean class="com.amazonaws.auth.AWSStaticCredentialsProvider">
+        <constructor-arg ref="basicAWSCredentials"/>
+    </bean>
+
+    <bean class="com.amazonaws.services.dynamodbv2.AmazonDynamoDBClient">
+        <constructor-arg ref="basicAWSCredentials"/>
+        <property name="endpoint" value="${uniTestAwsDynamoDbEndpoint}"/>
+    </bean>
+    <bean id="s3Client" class="com.amazonaws.services.s3.AmazonS3Client"/>
+
+
+    <bean class="com.flashflexpro.graniteamf.SimpleGraniteConfig">
+        <constructor-arg>
+            <bean class="org.granite.messaging.amf.io.RegexAMF3DeserializerSecurizer">
+                <property name="param" value="#{'(^com\.customshow\..+|^com\.flashflexpro\..+)'}"/>
+            </bean>
+        </constructor-arg>
+    </bean>
+
+    <bean id="amfConverterMysql" class="org.pubanatomy.amfspringmvc.FlashAMFHttpConverter"/>
+    <int-http:inbound-gateway request-channel="inputChannel" reply-channel="outputChannel"
+                              supported-methods="POST" message-converters="amfConverterMysql" payload-expression="body"
+                              path="/{path}/{serviceName}/{methodName}/{csSessionId}">
+        <int-http:header name="path" expression="#pathVariables.path"/>
+        <int-http:header name="serviceName" expression="#pathVariables.serviceName"/>
+        <int-http:header name="methodName" expression="#pathVariables.methodName"/>
+        <int-http:header name="csSessionId" expression="#pathVariables.csSessionId"/>
+    </int-http:inbound-gateway>
+
+
+    <int:channel id="inputChannel"/>
+    <int:channel id="outputChannel">
+        <int:queue/>
+    </int:channel>
+
+
+    <int:chain input-channel="inputChannel" output-channel="outputChannel">
+        <int:service-activator ref="rpcServiceInvoker" method="callServiceMethod"/>
+    </int:chain>
+
+    <bean id="rpcServiceInvoker" class="org.pubanatomy.siutils.RPCServiceInvoker">
+        <constructor-arg>
+            <map>
+                <entry key="awsS3UploadService" value-ref="awsS3UploadService"/>
+                <entry key="awsS3DownloadService" value-ref="awsS3DownloadService"/>
+                <entry key="configPerClientService" value-ref="configPerClientService"/>
+                <entry key="transcodingService" value-ref="transcodingService"/>
+                <entry key="configPerClientService" value-ref="configPerClientService"/>
+            </map>
+        </constructor-arg>
+    </bean>
+
+    <bean id="sqsClient" class="com.amazonaws.services.sqs.AmazonSQSClient"/>
+
+
+    <elasticsearch:node-client id="client" local="true" cluster-name="#{T(java.util.UUID).randomUUID().toString()}"
+                               http-enabled="false" path-data="build/elasticsearchTestData" path-home="src/test/resources/test-home-dir"/>
+
+    <bean id="elasticsearchTemplate"
+          class="org.springframework.data.elasticsearch.core.ElasticsearchTemplate">
+        <constructor-arg name="client" ref="client"/>
+    </bean>
+
+
+    <int:logging-channel-adapter channel="errorChannel" level="DEBUG"/>
+
+
+
+</beans>

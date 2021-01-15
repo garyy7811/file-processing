@@ -1,0 +1,119 @@
+configurations {
+    compile.exclude group: "commons-logging", module: "commons-logging"
+}
+
+
+dependencies {
+
+    compile "org.apache.logging.log4j:log4j-slf4j-impl:$log4jVersion"
+    compile "org.apache.logging.log4j:log4j-web:$log4jVersion"
+    compile "org.slf4j:slf4j-api:$slf4jVersion"
+    compile "org.slf4j:jcl-over-slf4j:$slf4jVersion"
+    compile "org.apache.commons:commons-lang3:3.1"
+    compile "org.apache.commons:commons-dbcp2:2.1"
+
+    compile "org.springframework:spring-core:$springVersion"
+    compile "org.springframework:spring-context:$springVersion"
+    compile "org.springframework:spring-context-support:$springVersion"
+    compile "org.springframework:spring-aop:$springVersion"
+    compile "org.springframework:spring-aspects:$springVersion"
+    compile "org.springframework:spring-jdbc:$springVersion"
+    compile "org.springframework:spring-tx:$springVersion"
+    compile "org.springframework:spring-oxm:$springVersion"
+    compile "org.springframework:spring-web:$springVersion"
+
+    compile "org.springframework.integration:spring-integration-core:$springIntegrationVersion"
+
+    compile "com.fasterxml.jackson.core:jackson-core:$jacksonVersion"
+    compile "com.fasterxml.jackson.core:jackson-databind:$jacksonVersion"
+    compile "com.fasterxml.jackson.core:jackson-annotations:$jacksonVersion"
+
+    compile "com.sun.mail:javax.mail:$javaxMailVersion"
+    compile "javax.persistence:persistence-api:1.0.2"
+    compile "javax.validation:validation-api:1.1.0.Final"
+
+    compile "org.hibernate:hibernate-validator:5.2.4.Final"
+    compile "javax.el:javax.el-api:2.2.4"
+    compile "org.glassfish.web:javax.el:2.2.4"
+
+    compile 'org.apache.logging.log4j:log4j-jcl:2.5'
+
+    //log4j2 async to boost performance
+    compile 'com.lmax:disruptor:3.3.6'
+
+}
+
+
+if( project.path.startsWith( "groovy:wars" ) || project.path.startsWith( "groovy:lambdas" ) ||
+        project.path.startsWith( "groovy:main" ) ){
+
+    task filterLog4j2xml {
+        doLast {
+
+            copy {
+                if( csConfig.logName == null ){
+                    csConfig.logName = project.name
+                }
+
+                logger.info( "csConfig.log4j2Template:" + csConfig.log4j2Template )
+                File customLog4jTemplate = null
+                if( csConfig.log4j2Template?.trim() ){
+                    customLog4jTemplate = rootProject.file( csConfig.log4j2Template )
+                    if( customLog4jTemplate.exists() ){
+                        logger.info( 'using custom log4j2 template:' + customLog4jTemplate.absolutePath )
+                    }
+                }
+
+                if( customLog4jTemplate == null || !customLog4jTemplate.exists() ){
+                    if( customLog4jTemplate != null ){
+                        logger.warn( 'custom log4j2 template NOT exist:' + customLog4jTemplate.absolutePath +
+                                ' fall back to main/resources/log4j2.template.xml' )
+                    }
+                    customLog4jTemplate = file( 'src/main/resources/log4j2.template.xml' )
+                }
+
+                from customLog4jTemplate
+
+                into file( 'src/main/resources' )
+                rename { 'log4j2.xml' }
+                filter { String line ->
+                    csConfig.each {
+                        line = line.replaceAll( "\\\$\\{" + it.key + "\\}", it.value )
+                    }
+                    line = line.replaceAll( "\\\$\\{logName\\}", csConfig.logName )
+                    return line
+                }
+            }
+        }
+    }
+    tasks.compileJava.dependsOn filterLog4j2xml
+
+    task distributeEhcacheXml {
+        doLast {
+
+            def projMysql = project( ":java:modules:java.query.mysql" )
+            def projMysqlRpc = project( ":java:modules:java.query.mysql.rpc" )
+            ProjectDependency projMysqlEacheDep = configurations.runtime.allDependencies.find {
+                it instanceof ProjectDependency &&
+                        ( it.dependencyProject.equals( projMysql ) || it.dependencyProject.equals( projMysqlRpc ) )
+            }
+
+            if( projMysqlEacheDep != null && !project.ext.hasProperty( "myEhcacheXml" ) ){
+                copy {
+                    from projMysql.file( 'src/main/resources' )
+                    include 'ehcache.template.xml'
+                    into file( 'src/main/resources' )
+                    rename { 'my-ehcache.xml' }
+                    filter { String line -> line.replaceAll( "\\\$\\{appName\\}", project.name ) }
+                }
+            }
+        }
+    }
+
+    processResources.dependsOn distributeEhcacheXml
+
+    tasks[ 'clean' ].doLast {
+        file( 'src/main/resources/log4j2.xml' ).delete()
+        file( 'src/main/resources/my-ehcache.xml' ).delete()
+    }
+}

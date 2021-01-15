@@ -1,0 +1,192 @@
+buildscript{
+    repositories{
+        mavenCentral()
+        jcenter()
+//        maven{ url "https://repo.spring.io/plugins-release/" }
+//        maven { url "https://repo.spring.io/plugins-release" }
+    }
+    dependencies{
+        classpath "com.amazonaws:aws-java-sdk:$awsSdkVersion"
+        classpath "jp.classmethod.aws:gradle-aws-plugin:$jpClassmethodGradlePluginVersion"
+    }
+}
+
+apply from: '../gradle/java.gradle'
+
+
+import com.amazonaws.auth.DefaultAWSCredentialsProviderChain
+import com.amazonaws.regions.RegionUtils
+import com.amazonaws.services.lambda.AWSLambdaClient
+import com.amazonaws.services.lambda.model.InvokeRequest
+import com.amazonaws.services.logs.AWSLogsClient
+import com.amazonaws.services.logs.model.DeleteSubscriptionFilterRequest
+import com.amazonaws.services.logs.model.PutSubscriptionFilterRequest
+import jp.classmethod.aws.gradle.lambda.AWSLambdaMigrateFunctionTask
+import org.pubanatomy.awsUtils.AddApigatewayToLambda
+import org.pubanatomy.awsUtils.AddIntoVpcLambda
+import org.pubanatomy.awsUtils.AddScheduleEventTriggerToLambda
+
+subprojects{
+
+    apply plugin: 'base'
+    apply plugin: "jp.classmethod.aws.lambda"
+    apply plugin: 'application'
+
+    dependencies{
+
+        compile 'com.amazonaws:aws-lambda-java-core:1.1.0'
+        compile 'com.amazonaws:aws-lambda-java-events:1.3.0'
+        compile 'com.amazonaws:aws-lambda-java-log4j:1.0.0'
+    }
+
+    evaluationDependsOn( ":java_modules" )
+
+    project.ext.lambdaEnvNames = [ 'runtimeAwsAccessKeyId', 'runtimeAwsSecretAccessKey', 'aws_region' ] as List
+    project.ext.warmup = true
+
+    if( csConfig.awsLambdaHandler?.trim() && csConfig.awsLambdaRole?.trim() ){
+        logger.info "configuring lambda using aws.accesskeyId:" + System.getProperty( "aws.accessKeyId" );
+
+        aws{
+            region = csConfig.aws_region
+        }
+        lambda{
+            region = csConfig.aws_region
+        }
+
+        task buildZip( type: Zip, dependsOn: test ){
+            from compileJava
+            from processResources
+            into( 'lib' ){
+                from configurations.runtime
+            }
+        }
+
+        task migrateFunction( type: AWSLambdaMigrateFunctionTask, dependsOn: buildZip ){
+            if( !csConfig.awsLambdaFunctionName?.trim() ){
+                logger.warn( "awsLambdaFunctionName fallback to project name" )
+                csConfig.awsLambdaFunctionName = project.name
+            }
+
+            logger.debug( '>>>>\r\ncsConfig.awsLambdaFunctionName:' + csConfig.awsLambdaFunctionName +
+                    ',\r\ncsConfig.csVersionBuildRBStr:' + csConfig.csVersionBuildRBStr +
+                    ',\r\ncsConfig.csVersionBuildTime:' + csConfig.csVersionBuildTime + ',\r\ncsConfig.awsLambdaRole:' +
+                    csConfig.awsLambdaRole + ',\r\ncsConfig.awsLambdaHandler:' + csConfig.awsLambdaHandler +
+                    ',\r\ncsConfig.awsLambdaMemSize:' + csConfig.awsLambdaMemSize + ',\r\ncsConfig.awsLambdaTimeout:' +
+                    csConfig.awsLambdaTimeout + "\r\n<<<<" )
+
+            functionName = csConfig.awsLambdaFunctionName
+            functionDescription = csConfig.csVersionBuildRBStr + "  " + csConfig.csVersionBuildTime
+            if( csConfig.awsLambdaMemSize?.trim() ){
+                memorySize = Long.parseLong( csConfig.awsLambdaMemSize )
+            }
+            if( csConfig.awsLambdaTimeout?.trim() ){
+                timeout = Long.parseLong( csConfig.awsLambdaTimeout )
+            }
+            role = csConfig.awsLambdaRole
+            handler = csConfig.awsLambdaHandler
+
+            runtime = "java8"
+            zipFile = buildZip.archivePath
+
+            doFirst{
+                def entries = project.ext.lambdaEnvNames.collectEntries{
+                    [ ( it ): csConfig[ it ] ]
+                }
+                environment = entries
+
+                println "project.ext.warmup>>>>>>>" + project.ext.warmup
+                if( project.ext.warmup ){
+                    deployFunctionWithTriggers.dependsOn addWarmupTrigger
+                }
+            }
+        }
+        task addWarmupTrigger( type: AddScheduleEventTriggerToLambda ){
+            awsRegion = csConfig.aws_region
+            lambdaFunctionName = csConfig.awsLambdaFunctionName
+            ruleScheduleExpression = "rate(3 minutes)";
+            ruleNamePrefix = csConfig.cs_config.split( "/" ).last().split( "\\." )[ 0 ] + "-warmup"
+            lambdaInput = "{\"resource\":\"warmup!\"}"
+        }
+
+        task deployFunctionWithTriggers{
+            doLast{
+
+                def lambdaClient = new AWSLambdaClient( new DefaultAWSCredentialsProviderChain() )
+                lambdaClient.setRegion( RegionUtils.getRegion( csConfig.aws_region ) )
+                lambdaClient.
+                        invoke( new InvokeRequest().withFunctionName( csConfig.awsLambdaFunctionName ).
+                                withPayload( "{}" ) )
+
+                AWSLogsClient logsClient = new AWSLogsClient( new DefaultAWSCredentialsProviderChain() )
+                logsClient.setRegion( RegionUtils.getRegion( csConfig.aws_region ) )
+                def logGroupName = "/aws/lambda/" + csConfig.awsLambdaFunctionName
+                if( csConfig.awsLambdaLoggingToKinesis == 'true' ){
+                    logsClient.
+                            putSubscriptionFilter( new PutSubscriptionFilterRequest().withLogGroupName( logGroupName ).
+                                    withFilterName( "NoFilter" ).withFilterPattern( "" ).
+                                    withDestinationArn( csConfig.loggingKinesisStreamArn ).
+                                    withRoleArn( csConfig.loggingKinesisRoleArn ) )
+                }
+                else{
+                    logsClient.deleteSubscriptionFilter( new DeleteSubscriptionFilterRequest().withLogGroupName( logGroupName ).
+                            withFilterName( "NoFilter" ) )
+                }
+
+                logger.info( " done !!! " )
+            }
+        }
+
+        boolean chained = false;
+        if( csConfig.awsLambdaSubnetIds?.trim() && csConfig.awsLambdaSecurityGroupIds?.trim() ){
+            task addLambdaIntoVpc( type: AddIntoVpcLambda ){
+                awsRegion = csConfig.aws_region
+                lambdaFunctionName = csConfig.awsLambdaFunctionName
+                lambdaFunctionSubnetIds = csConfig.awsLambdaSubnetIds
+                lambdaFunctionSecurityGroupIds = csConfig.awsLambdaSecurityGroupIds
+            }
+            addLambdaIntoVpc.dependsOn migrateFunction
+            deployFunctionWithTriggers.dependsOn addLambdaIntoVpc
+            chained = true;
+        }
+
+        if( csConfig.awsLambdaApiId?.trim() && csConfig.awsLambdaApiResourceId?.trim() ){
+            task addApigateway( type: AddApigatewayToLambda ){
+                awsRegion = csConfig.aws_region
+
+                lambdaFunctionName = csConfig.awsLambdaFunctionName
+
+                apiGatewayApiId = csConfig.awsLambdaApiId
+                apiGatewayResourceId = csConfig.awsLambdaApiResourceId
+                apiGatewayStagename = csConfig.awsLambdaApiStageName
+            }
+            addApigateway.dependsOn migrateFunction
+            deployFunctionWithTriggers.dependsOn addApigateway
+            chained = true;
+        }
+
+        if( !chained ){
+            deployFunctionWithTriggers.dependsOn migrateFunction
+        }
+        if( project.ext.warmup ){
+            task addWarmupTrigger( type: AddScheduleEventTriggerToLambda ){
+                awsRegion = csConfig.aws_region
+                lambdaFunctionName = csConfig.awsLambdaFunctionName
+                ruleNamePrefix = csConfig.cs_config.split( "/" ).last().split( "\\." )[ 0 ] + "-warmup"
+                lambdaInput = "{\"resource\":\"warmup!\"}"
+            }
+        }
+
+        artifacts{
+            archives buildZip
+        }
+
+        processResources.dependsOn rootProject.
+                project( ":java_modules" ).tasks.createUploadBucketDistribution
+
+    }
+    else{
+        logger.info( "csConfig.awsLambdaHandler or csConfig.awsLambdaRole is null this is not a lambda build" )
+    }
+
+}

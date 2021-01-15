@@ -1,0 +1,34 @@
+org/pubanatomy/awsutils/LambdaBase.java
+ org.pubanatomy.awsutils.LambdaBase
+ org.pubanatomy.awsutils.LambdaBase$ProxyInput
+org/pubanatomy/awsutils/ConfigurableDefaultEntityMapper.java
+ org.pubanatomy.awsutils.ConfigurableDefaultEntityMapper
+org/pubanatomy/amfspringmvc/utils/FlashSocketPolicyServer.java
+ org.pubanatomy.amfspringmvc.utils.FlashSocketPolicyServer
+ org.pubanatomy.amfspringmvc.utils.FlashSocketPolicyServer$1
+ org.pubanatomy.amfspringmvc.utils.FlashSocketPolicyServer$1$1
+org/pubanatomy/amfspringmvc/utils/FlashPrintLogging.java
+ org.pubanatomy.amfspringmvc.utils.FlashPrintLogging
+ org.pubanatomy.amfspringmvc.utils.FlashPrintLogging$1
+ org.pubanatomy.amfspringmvc.utils.FlashPrintLogging$1$1
+org/pubanatomy/siutils/FlashLogging.java
+ org.pubanatomy.siutils.FlashLogging
+ org.pubanatomy.siutils.FlashLogging$ParseStack
+org/pubanatomy/siutils/RpcError.java
+ org.pubanatomy.siutils.RpcError
+org/pubanatomy/siutils/ClientInfo.java
+ org.pubanatomy.siutils.ClientInfo
+org/pubanatomy/awsutils/S3ObjectDetails.java
+ org.pubanatomy.awsutils.S3ObjectDetails
+org/pubanatomy/siutils/LambdaSpringBase.java
+ org.pubanatomy.siutils.LambdaSpringBase
+org/pubanatomy/amfspringmvc/FlashAMFHttpConverter.java
+ org.pubanatomy.amfspringmvc.FlashAMFHttpConverter
+org/pubanatomy/siutils/RPCServiceInvoker.java
+ org.pubanatomy.siutils.RPCServiceInvoker
+org/pubanatomy/amfspringmvc/CrossDomainXML.java
+ org.pubanatomy.amfspringmvc.CrossDomainXML
+org/pubanatomy/awsutils/DynamoElasticSearch.java
+ org.pubanatomy.awsutils.DynamoElasticSearch
+org/pubanatomy/awsutils/Log4j2LambdaAppender.java
+ org.pubanatomy.awsutils.Log4j2LambdaAppender

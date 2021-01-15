@@ -1,0 +1,36 @@
+http://54.204.64.112:5601/app/sense
+
+GET _search
+{
+  "query": {
+
+     "filtered": {
+       "query" : {
+          "has_parent" : {
+            "type" : "aws-s3-upload",
+            "query" : {
+              "terms": {
+                "clientId": [1, 1000023]
+                }
+              },
+              "inner_hits" : { }
+            }
+          },
+
+      "filter": {
+        "query": {
+          "bool": {
+            "must_not": [
+              {
+                "match": {"status": "Finished"}
+              },
+              {
+                "match": {"status": "tError"}
+              }
+            ]
+          }
+        }
+      }
+     }
+  }
+}

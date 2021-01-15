@@ -1,0 +1,142 @@
+buildscript {
+    repositories {
+        mavenCentral()
+        jcenter()
+    }
+    dependencies {
+        classpath "org.springframework.boot:spring-boot-gradle-plugin:1.5.7.RELEASE"
+        classpath "se.transmode.gradle:gradle-docker:1.2"
+        classpath "com.amazonaws:aws-java-sdk:$awsSdkVersion"
+
+        classpath "org.elasticsearch.client:elasticsearch-rest-client:$elasticsearchVersion"
+    }
+}
+
+import com.amazonaws.auth.DefaultAWSCredentialsProviderChain
+import com.amazonaws.regions.RegionUtils
+import com.amazonaws.services.autoscaling.AmazonAutoScalingClient
+import com.amazonaws.services.autoscaling.model.DeleteAutoScalingGroupRequest
+import com.amazonaws.services.autoscaling.model.DeleteAutoScalingGroupResult
+import com.amazonaws.services.autoscaling.model.DeleteLaunchConfigurationRequest
+import com.amazonaws.services.autoscaling.model.DeleteLaunchConfigurationResult
+import com.amazonaws.services.autoscaling.model.DescribeAutoScalingGroupsRequest
+import com.amazonaws.services.autoscaling.model.DescribeAutoScalingGroupsResult
+import com.amazonaws.services.autoscaling.model.DescribeAutoScalingInstancesRequest
+import com.amazonaws.services.autoscaling.model.Instance
+import com.amazonaws.services.autoscaling.model.UpdateAutoScalingGroupRequest
+import com.amazonaws.services.autoscaling.model.UpdateAutoScalingGroupResult
+import com.amazonaws.services.ec2.AmazonEC2Client
+import com.amazonaws.services.ec2.model.DescribeInstancesRequest
+import com.amazonaws.services.ec2.model.DescribeInstancesResult
+import com.amazonaws.services.ec2.model.InstanceState
+import com.amazonaws.services.ec2.model.InstanceStateName
+import com.amazonaws.services.ecs.AmazonECSClient
+import com.amazonaws.services.ecs.model.DeleteServiceRequest
+import com.amazonaws.services.ecs.model.DescribeContainerInstancesRequest
+import com.amazonaws.services.ecs.model.DescribeTasksRequest
+import com.amazonaws.services.ecs.model.DescribeTasksResult
+import com.amazonaws.services.ecs.model.ListServicesRequest
+import com.amazonaws.services.ecs.model.ListTasksRequest
+import com.amazonaws.services.ecs.model.UpdateServiceRequest
+
+AmazonECSClient ecsClient = new AmazonECSClient( new DefaultAWSCredentialsProviderChain() )
+ecsClient.setRegion( RegionUtils.getRegion( csConfig.aws_region ) )
+
+task deleteAllServices {
+    doLast {
+        println 'csConfig.ecsClusterName>>>' + csConfig.ecsClusterName
+
+        ecsClient.listServices( new ListServicesRequest().withCluster( csConfig.ecsClusterName ) ).serviceArns.each {
+            println 'service--->>>' + it
+            ecsClient.
+                    updateService( new UpdateServiceRequest().withCluster( csConfig.ecsClusterName ).withService( it ).
+                            withDesiredCount( 0 ) )
+            ecsClient.
+                    deleteService( new DeleteServiceRequest().withCluster( csConfig.ecsClusterName ).withService( it ) )
+        }
+
+    }
+}
+
+task removeEc2LaunchConfigs {
+    doLast {
+        println 'csConfig.ecsLaunchConfigName>>>' + csConfig.ecsLaunchConfigName
+        println 'csConfig.ecsAutoScalingGroupName>>>' + csConfig.ecsAutoScalingGroupName
+        AmazonAutoScalingClient ecsAutoScalingClient = new AmazonAutoScalingClient(
+                new DefaultAWSCredentialsProviderChain() )
+
+        UpdateAutoScalingGroupResult autoScalingGroupResult = ecsAutoScalingClient.updateAutoScalingGroup(
+                new UpdateAutoScalingGroupRequest().withAutoScalingGroupName( csConfig.ecsAutoScalingGroupName ).
+                        withDesiredCapacity( 0 ).withMinSize( 0 ) )
+
+        println 'autoScalingGroupResult>>>' + autoScalingGroupResult
+
+        /*
+        while( true ){
+            List<String> instIdLst = ecsAutoScalingClient.
+                    describeAutoScalingGroups( new DescribeAutoScalingGroupsRequest().
+                            withAutoScalingGroupNames( csConfig.ecsAutoScalingGroupName ) ).collect {
+                it.getAutoScalingGroups().collect { it.getInstances().collect { it.getInstanceId() } }
+            }.flatten()
+
+
+            AmazonEC2Client ec2Client = new AmazonEC2Client()
+            DescribeInstancesResult instDescRslt = ec2Client.
+                    describeInstances( new DescribeInstancesRequest().withInstanceIds( instIdLst ) )
+
+            List<com.amazonaws.services.ec2.model.Instance> instLst = instDescRslt.getReservations().
+                    collect { it.getInstances() }.flatten()
+
+            List<com.amazonaws.services.ec2.model.Instance> notTmntLst = instLst.
+                    findAll { !it.getState().getName().equals( InstanceStateName.Terminated.toString() ) }
+
+
+            if( notTmntLst.size() == 0 ){
+                break;
+            }
+
+            println 'waiting for instances:' + notTmntLst.collect { it.toString() }
+            Thread.currentThread().sleep( 2222 )
+        }
+        */
+
+        DeleteAutoScalingGroupResult autoscaleDelRslt = ecsAutoScalingClient.
+                deleteAutoScalingGroup( new DeleteAutoScalingGroupRequest().
+                        withAutoScalingGroupName( csConfig.ecsAutoScalingGroupName ).withForceDelete( true ) )
+
+        println 'auto scale delete result>>' + autoscaleDelRslt.toString()
+        def launchDeleteRslt = ecsAutoScalingClient.deleteLaunchConfiguration(
+                new DeleteLaunchConfigurationRequest().withLaunchConfigurationName( csConfig.ecsLaunchConfigName ) )
+        println 'launch config delete result>>' + launchDeleteRslt.toString()
+
+    }
+
+}
+
+
+task matchTaskDnsNames {
+    doLast {
+
+        Map tskNameToDomainName = [( csConfig.ecsRedisTaskName )        : csConfig.ecsRedisDomainName,
+                                   ( csConfig.ecsMySQLTaskName )        : csConfig.ecsMySqlDomainName,
+                                   ( csConfig.ecsElasticSearchTaskName ): csConfig.ecsElasticSearchDomainName]
+
+
+        def taskNameLst = new LinkedList<String>( tskNameToDomainName.keySet() )
+        def describeTasks = ecsClient.describeTasks( new DescribeTasksRequest().withCluster( csConfig.ecsClusterName ).
+                withTasks( taskNameLst ) )
+
+
+
+        List<String> ec2IdLst = ecsClient.describeContainerInstances( new DescribeContainerInstancesRequest().
+                withContainerInstances( describeTasks.getTasks().collect { it.getContainerInstanceArn() } ) ).
+                getContainerInstances().collect { it.getEc2InstanceId() }
+
+        AmazonEC2Client ec2Client = new AmazonEC2Client( new DefaultAWSCredentialsProviderChain() )
+        ec2Client.setRegion( RegionUtils.getRegion( csConfig.aws_region ) )
+        def descEc2InstsRslt = ec2Client.describeInstances( new DescribeInstancesRequest().withInstanceIds( ec2IdLst ) )
+        descEc2InstsRslt.getReservations().collect { it.getInstances().collect { it.getPrivateIpAddress() } }.flatten()
+
+
+    }
+}

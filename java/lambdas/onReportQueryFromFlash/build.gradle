@@ -1,0 +1,15 @@
+mainClassName = "com.customshow.lambda.OnCallFromFlash"
+
+dependencies {
+    compile project( ":java_modules:java.aws.utils" )
+    compile project( ':java_modules:java.reporting.solr.query' )
+
+}
+
+
+processResources.dependsOn rootProject.project( ":java_modules" ).tasks.createSQS
+processResources.dependsOn rootProject.project( ":java_modules" ).tasks.createBucketsDistribution
+
+
+ext.lambdaEnvNames.add( "solrSlideshowsessionUrl" )
+ext.lambdaEnvNames.add( "awsLoginVerificationDynamoTablename" )

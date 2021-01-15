@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:tx="http://www.springframework.org/schema/tx"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:utils="http://www.springframework.org/schema/util"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+       http://www.springframework.org/schema/beans/spring-beans.xsd
+       http://www.springframework.org/schema/tx
+       http://www.springframework.org/schema/tx/spring-tx.xsd
+       http://www.springframework.org/schema/context
+       http://www.springframework.org/schema/context/spring-context.xsd
+       http://www.springframework.org/schema/util
+       http://www.springframework.org/schema/util/spring-util.xsd">
+
+    <context:annotation-config/>
+    <tx:annotation-driven transaction-manager="rangePartitioningHsqlTransactionManager"/>
+
+    <utils:map id="config">
+        <entry key="db0filepath" value="#{systemProperties['java.io.tmpdir']}"/>
+        <entry key="db0user" value="sa"/>
+        <entry key="db0pass" value=""/>
+        <entry key="hsqlserverurl" value="#{'jdbc:hsqldb:hsql://127.0.0.1:9988/db0'}"/>
+    </utils:map>
+
+    <bean id="hsqlServer" class="org.pubanatomy.batchpartition.StartStopHsql">
+        <constructor-arg value="#{config.db0filepath}"/>
+        <constructor-arg value="#{config.hsqlserverurl}"/>
+    </bean>
+
+    <bean id="rangePartitioningHsqlDataSource" class="org.apache.commons.dbcp2.BasicDataSource" depends-on="hsqlServer"
+          destroy-method="close">
+        <property name="driverClassName" value="org.hsqldb.jdbc.JDBCDriver"/>
+        <property name="url" value="#{config.hsqlserverurl}"/>
+        <property name="username" value="#{config.db0user}"/>
+        <property name="password" value="#{config.db0pass}"/>
+    </bean>
+
+    <bean id="rangePartitioningHsqlTransactionManager"
+          class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+        <property name="dataSource" ref="rangePartitioningHsqlDataSource"/>
+    </bean>
+
+
+    <bean id="resPartitioning" class="org.pubanatomy.batchpartition.RangePartitionServiceImpl">
+        <constructor-arg>
+            <bean class="org.pubanatomy.batchpartition.RangePartitionService$Config">
+                <property name="tableName" value="slideResourceContentPartitioning"/>
+                <property name="rootFrom" value="${slideResource.startId}"/>
+                <property name="step" value="${slideResource.batchSize}"/>
+            </bean>
+        </constructor-arg>
+        <constructor-arg ref="rangePartitioningHsqlDataSource"/>
+        <constructor-arg value="false"/>
+        <constructor-arg value="true"/>
+    </bean>
+    <bean id="thumbPartitioning" class="org.pubanatomy.batchpartition.RangePartitionServiceImpl">
+        <constructor-arg>
+            <bean class="org.pubanatomy.batchpartition.RangePartitionService$Config">
+                <property name="tableName" value="slideThumbnailPartitioning"/>
+                <property name="rootFrom" value="${slideThumbnail.startId}"/>
+                <property name="step" value="${slideThumbnail.batchSize}"/>
+            </bean>
+        </constructor-arg>
+        <constructor-arg ref="rangePartitioningHsqlDataSource"/>
+        <constructor-arg value="false"/>
+        <constructor-arg value="true"/>
+    </bean>
+
+
+</beans>

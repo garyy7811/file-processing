@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration>
+    <Appenders>
+        <Console name="STOUT" target="SYSTEM_OUT">
+            <PatternLayout pattern="[%t] [%d{yyyy-MM-dd HH:mm:ss,SSS Z}] [%c.%M(%F:%L)] [%level{lowerCase=true}] %m%n"/>
+        </Console>
+    </Appenders>
+    <Loggers>
+        <Logger additivity="false" name="org.springframework" level="info">
+            <AppenderRef ref="STOUT"/>
+        </Logger>
+        <Logger additivity="false" name="com.customshow" level="debug">
+            <AppenderRef ref="STOUT"/>
+        </Logger>
+        <Root additivity="false" level="warn">
+            <AppenderRef ref="STOUT"/>
+        </Root>
+    </Loggers>
+</Configuration>

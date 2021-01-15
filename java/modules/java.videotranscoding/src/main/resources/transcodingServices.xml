@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+            http://www.springframework.org/schema/beans/spring-beans.xsd"
+       default-lazy-init="true">
+
+    <bean class="org.pubanatomy.videotranscoding.TranscodingDAO">
+        <constructor-arg value="${awsTranscodingDynamoTablename}"/>
+    </bean>
+
+    <bean id="transcodingReportingService" class="org.pubanatomy.videotranscoding.TranscodingReportingService">
+        <constructor-arg value="${elasticsearchIndexNameFromDynamoDB}"/>
+    </bean>
+
+    <bean id="transcodingService" class="org.pubanatomy.videotranscoding.TranscodingService">
+        <constructor-arg value="${rootUserId}"/>
+        <constructor-arg value="${awsS3DownloadBucket}"/>
+        <constructor-arg value="${elasticsearchIndexNameFromDynamoDB}"/>
+    </bean>
+
+    <bean id="transcodingFunctions" class="org.pubanatomy.videotranscoding.TranscodingFunctions">
+        <constructor-arg index="0" value="${urlCalledByEncodingCom}"/>
+        <constructor-arg index="1" value="${userIdForEncodingCom}"/>
+        <constructor-arg index="2" value="${userkeyForEncodingCom}"/>
+        <constructor-arg index="3" value="${awsS3DownloadBucket}"/>
+        <constructor-arg index="4" value="${awsS3DownloadBucketAccessKeyAndEncodedSecret}"/>
+        <constructor-arg index="5" value="${backToUpdateStatusInMin}"/>
+    </bean>
+
+    <import resource="encoding.com.xml"/>
+
+</beans>

@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="DEBUG">
+    <Appenders>
+        <Console name="CONSOLE" target="SYSTEM_OUT">
+            <PatternLayout pattern="∈∈∈[${logName}] [${cs_config}] [%t] [%d{yyyy-MM-dd HH:mm:ss,SSS Z}] [%c.%M(%F:%L)] [%level{lowerCase=true}] %replace{%m}{(\r|\n)}{⊃}∋∋∋%n" alwaysWriteExceptions="true"/>
+        </Console>
+        <RollingFile name="fileRoot" fileName="${sys:catalina.base}/logs/${logName}.root.log"
+                     filePattern="${sys:catalina.base}/logs/${logName}/$${date:yyyy-MM}/app-%d{MM-dd-yyyy}-%i.root.log.gz">
+            <PatternLayout pattern="∈∈∈[${logName}] [${cs_config}] [%t] [%d{yyyy-MM-dd HH:mm:ss,SSS Z}] [%c.%M(%F:%L)] [%level{lowerCase=true}] %replace{%m}{(\r|\n)}{⊃}∋∋∋%n" alwaysWriteExceptions="true"/>
+            <Policies>
+                <OnStartupTriggeringPolicy/>
+                <SizeBasedTriggeringPolicy size="20 MB"/>
+                <TimeBasedTriggeringPolicy/>
+            </Policies>
+        </RollingFile>
+        <RollingFile name="fileCustomShow" fileName="${sys:catalina.base}/logs/${logName}.customshow.log"
+                     filePattern="${sys:catalina.base}/logs/${logName}/$${date:yyyy-MM}/app-%d{MM-dd-yyyy}-%i.customshow.log.gz">
+            <PatternLayout pattern="∈∈∈[${logName}] [${cs_config}] [%t] [%d{yyyy-MM-dd HH:mm:ss,SSS Z}] [%c.%M(%F:%L)] [%level{lowerCase=true}] %replace{%m}{(\r|\n)}{⊃}∋∋∋%n" alwaysWriteExceptions="true"/>
+            <Policies>
+                <OnStartupTriggeringPolicy/>
+                <SizeBasedTriggeringPolicy size="20 MB"/>
+                <TimeBasedTriggeringPolicy/>
+            </Policies>
+        </RollingFile>
+        <SMTP name="MAIL"
+              ignoreExceptions="false"
+              subject="CustomShow Error log from ${logName}"
+              from="${logMailFrom}"
+              to="${logMailTo}"
+              smtpHost="${logMailSmtpHost}"
+              smtpPort="${logMailSmtpPort}"
+              smtpProtocol="${logMailSmtpProtocol}"
+              smtpUsername="${logMailSmtpUsername}"
+              smtpPassword="${logMailSmtpPassword}"
+              bufferSize="${logMailBufferSize}">
+            <PatternLayout pattern="∈∈∈[${logName}] [${cs_config}] [%t] [%d{yyyy-MM-dd HH:mm:ss,SSS Z}] [%c.%M(%F:%L)] [%level{lowerCase=true}] %replace{%m}{(\r|\n)}{⊃}∋∋∋%n" alwaysWriteExceptions="true"/>
+        </SMTP>
+    </Appenders>
+    <Loggers>
+        <Logger additivity="false" name="org.springframework" level="${loggerSpringLevel}">
+            <AppenderRef ref="${loggerSpringAppenderRef}"/>
+        </Logger>
+        <Logger additivity="false" name="org.springframework.integration" level="${loggerSpringIntegrationLevel}">
+            <AppenderRef ref="${loggerSpringIntegrationAppenderRef}"/>
+        </Logger>
+        <Logger additivity="false" name="com.amazonaws" level="${loggerAwsLevel}">
+            <AppenderRef ref="${loggerAwsAppenderRef}"/>
+        </Logger>
+        <Logger additivity="false" name="com.customshow" level="${loggerCustomShowLevel}">
+            <AppenderRef ref="${loggerCustomShowAppenderRef}"/>
+            <AppenderRef ref="MAIL" level="fatal" />
+        </Logger>
+        <Root level="${loggerRootLevel}">
+            <AppenderRef ref="${loggerRootAppenderRef}"/>
+        </Root>
+    </Loggers>
+</Configuration>

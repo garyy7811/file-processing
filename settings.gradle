@@ -1,0 +1,114 @@
+rootProject.name = 'ycs'
+
+
+include 'java/lambdas:_build_aws_res_domain'
+
+//include 'java/main:labyrinth.thumb.purge'
+
+include 'java/modules:java.aws.utils'
+
+
+//include 'flash:swcs:flash.utils'
+//include 'flash:swcs:flash.utils.spark'
+include 'java/modules:java.login.verify'
+include 'java/modules:java.config.per.client'
+
+include 'java/modules:java.query.mysql'
+include 'java/modules:java.query.mysql.rpc'
+include 'java/modules:java.batch.partition'
+include 'java/modules:java.migration.utils'
+include 'java/modules:java.awsS3Upload'
+include 'java/modules:java.awsS3Download'
+include 'java/modules:java.videotranscoding'
+include 'java/modules:java.processImgFla'
+//include 'flash:swcs:flash.awsS3Upload'
+//include 'flash:swcs:flash.awsS3Upload.spark'
+//include 'flash:swcs:flash.awsS3Download'
+//include 'flash:swcs:flash.awsS3Download.spark'
+//include 'flash:swcs:flash.config.per.client'
+//include 'flash:swcs:flash.config.per.client.spark'
+//include 'flash:swcs:flash.videotranscoding'
+//include 'flash:swcs:flash.videotranscoding.spark'
+//include 'flash:swcs:flash.labyrinth.cloud.spark'
+//include 'flash:swfs:csVideoLoadTest'
+//include 'flash:swfs:labyrinth'
+
+include 'java/wars:cloudMySQL'
+include 'java/wars:labyrinth.res.thumb.copyToS3'
+include 'java/wars:migrate.resources'
+include 'java/wars:partitioning'
+include 'java/lambdas:markOnFileUploadedToS3'
+include 'java/lambdas:startProcessingOnUploadedConfirmed'
+include 'java/lambdas:dispatchTranscodeEvent'
+include 'java/lambdas:onCallFromEncodingCom'
+include 'java/lambdas:onCallFromFlash'
+include 'java/lambdas:constChkTranscoding'
+include 'java/lambdas:copyResThumbToS3'
+include 'java/lambdas:dynamodb2ES'
+include 'java/lambdas:S3UploadFromFlash'
+include 'java/lambdas:javaTranscodingService'
+include 'java/lambdas:onApiGatewayVpcProxy'
+include 'java/lambdas:indexS3BucketInDDB'
+include 'java/lambdas:auth.resource.url'
+include 'java/springboots:searchIndexingNvMySQL'
+
+
+/*>>>>reporting>>>>*/
+
+include 'java/modules:java.solr.query.common'
+include 'java/modules:java.solr.query.web.common'
+include 'java/modules:java.reporting.dto'
+include 'java/modules:java.reporting.solr.bean'
+include 'java/modules:java.reporting.solr.query'
+include 'java/lambdas:onReportEventFromFlash'
+include 'java/lambdas:onReportQueryFromFlash'
+//include 'flash:swcs:flash.reporting.dto'
+//include 'flash:swcs:flash.reporting.query'
+//include 'flash:swcs:flash.reporting.reports'
+//include 'flash:swcs:flash.reporting.reports.mx'
+//include 'flash:swfs:nvreporting.swf'
+//include 'flash:airs:nvreporting.air'
+
+
+
+//include 'flash:swcs:flash.solr.query'
+//include 'flash:swcs:flash.solr.query.v'
+//include 'flash:swcs:flash.cloudconsole.spark'
+//include 'flash:swfs:cloud.console'
+//include 'flash:airs:cloud.console.air'
+
+/*<<<<reporting<<<<*/
+
+
+include 'java/modules:java.search.query'
+include 'java/springboots:searchQueryNvMySQL'
+include 'java/lambdas:onSearchQuery'
+//include 'flash:swcs:flash.search.query'
+//include 'flash:swcs:flash.search.query.spark'
+
+
+include 'java/wars:servletAPI'
+
+
+include 'java/springboots:commonInfrastructure'
+//include 'java/springboots:bootAPI'
+include 'java/springboots:bootApiES5'
+
+
+include 'lambda-js:search-query'
+include 'lambda-js:getAuthorizedFolders'
+include 'lambda-js:searchResources'
+include 'lambda-js:getSlideShow'
+include 'lambda-js:slideShowToPdf'
+include 'lambda-js:slideShowList'
+
+
+def changeName
+changeName = { ProjectDescriptor p ->
+    p.name = p.name.replaceAll( '/', "_" )
+
+    p.getChildren().each {
+        changeName( it )
+    }
+}
+changeName( rootProject )

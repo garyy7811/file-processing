@@ -1,0 +1,11 @@
+mainClassName = "com.customshow.lambda.OnCallFromFlash"
+
+dependencies {
+    compile project( ":java_modules:java.aws.utils" )
+    compile project( ':java_modules:java.reporting.dto' )
+}
+
+ext.lambdaEnvNames.add( "reportingKinesisStreamName" )
+
+
+project.ext.warmup = false
